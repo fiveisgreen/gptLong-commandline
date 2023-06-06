@@ -110,7 +110,7 @@ if verbose:
 #print(gpt.get_top_reply(prompt))
 
 if not args.disable:
-    openai.api_key = os.getenv("OPENAI_API_KEY")#"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"
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
     response = openai.Completion.create(
       model=Model,

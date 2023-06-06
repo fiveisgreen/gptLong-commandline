@@ -1,3 +1,33 @@
+# Command-line Interface 
+This is a fork of the GPT-3 Sandbox described more below. This fork adds python based shell commands for interacting with OpenAI models from a linux the command line (developed on WSL2/Ubuntu20.04 on Windows 10). These commands support processing of arbitrarily long text files. Long files are automatically chunked and processed, then restitched. 
+
+Two commands are made available `gpt` and `gpte`. 
+
+## The gpt command 
+The `gpt` command takes in a prompt and produces a single result. 
+
+## The gpte command 
+The `gpt` command takes in a prompt and produces a single result. 
+
+## Setup 
+gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). You then have to   
+
+`git clone https://github.com/fiveisgreen/gptLong-commandline.git`
+
+Get your OpenAI API key ready and call the setup script. 
+
+`cd gptLong-commandline`
+
+In bash: 
+
+`source setup.sh`
+
+In (t)csh:
+
+`source setup.csh`
+
+Then install the dependencies for GPT-3 sandbox below: 
+
 # GPT-3 Sandbox: Turn your ideas into demos in a matter of minutes
 
 Initial release date: 19 July 2020

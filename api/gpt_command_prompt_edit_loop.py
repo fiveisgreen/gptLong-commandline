@@ -35,6 +35,7 @@ Optional Model Parameters
 
 
 """SETTINGS"""
+meld_exe_file_path = "/mnt/c/Program\ Files/Meld/MeldConsole.exe"
 #list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
 Encoding = "utf8" #
 #Encoding = "latin1" #ok regardless of utf8 mode, but tends to wrech singla and double quotation marks
@@ -246,7 +247,7 @@ with open(prompt_fname,'w') as fp:
 #def run_loop( in_file_name, out_file_name, gtp_instructions,  maxTokens = 4095):
 with open(args.out,'w') as fout:
             if not args.disable:
-                openai.api_key = os.getenv("OPENAI_API_KEY")#"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"
+                openai.api_key = os.getenv("OPENAI_API_KEY")
             len_prompt = len(Prompt)
             if args.verbose:
                 print("length of prompt body", len_prompt ) 
@@ -329,7 +330,14 @@ with open(args.out,'w') as fout:
 os.system("cp "+args.out+" "+backup_gtp_file+" &")
 print("meld "+prompt_fname +" "+args.out+" &")
 print("vimdiff "+prompt_fname +" "+args.out)
-os.system("/mnt/c/Program\ Files/Meld/MeldConsole.exe "+prompt_fname +" "+args.out+" &")
+if os.path.exists(meld_exe_file_path):
+    os.system(meld_exe_file_path + " " + prompt_fname +" "+args.out+" &")
+else:
+    try:
+        os.system("vimdiff --version")
+        os.system("vimdiff " + prompt_fname +" "+args.out+" &")
+    except:
+        os.system("diff " + prompt_fname +" "+args.out+" &")
 
 with open("ok",'w') as fs:
     if args.files:
