@@ -17,7 +17,7 @@ $ gtpe -f body_file1 -i instr_file1 instr_file2 [-o outfile]
 $ gtpe ["instructions"] ["body epilog"] [-f body.txt] [-i instruction1.txt instrcution2.txt] [-o outfile.txt] [params] [flags]
 
 Flags:
-# -g --gtp3     switch engine from edit mode to merged prompt mode with instruction prolog..
+# -g --gtp3     switch engine from edit mode to merged prompt mode with instruction prolog.
 # -c --code     switch engine to code mode
 # -e --echo     prints prompt and responce to terminal
 # -v --verbose  turn on verbose printint
