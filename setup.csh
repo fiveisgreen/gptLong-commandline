@@ -3,27 +3,33 @@
 continuing=true
 if ( ! `which python3` ) then
 then
-    while true; do
+    while( {true} )
         read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
-        case $yn in
-            [Yy]* ) sudo apt update -y && sudo apt-get install python3.6 -y; break;;
-            [Nn]* ) continuing=false
-            * ) echo "Please answer yes (y/Y) or no (n/N).";;
-        esac
-    done
+        switch ($yn)
+            case [Yy]: 
+                sudo apt update -y && sudo apt-get install python3.6 -y; break;
+            case [Nn]: 
+                continuing=false; break;
+            default:
+               echo "Please answer yes (y/Y) or no (n/N)."; breaksw
+        endsw
+    end
 endif
 
 if ( "$continuing" = true ) then
 
 if ( ! `which pip` ) then
-    while true; do
+    while( {true} )
         read -p "pip not detected. Would you like to automatically install python3-pip now with sudo apt-get? (y/n):" yn
-        case $yn in
-            [Yy]* ) sudo apt update -y && sudo apt-get install python3-pip -y; break;;
-            [Nn]* ) continuing=false
-            * ) echo "Please answer yes (y/Y) or no (n/N).";;
-        esac
-    done
+        switch ($yn)
+            case [Yy]: 
+                sudo apt update -y && sudo apt-get install python3-pip -y; break;
+            case [Nn]: 
+                continuing=false; break;
+            default:
+               echo "Please answer yes (y/Y) or no (n/N)."; breaksw
+        endsw
+    end
 endif
 
 if ( "$continuing" = true ) then
