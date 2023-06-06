@@ -1,15 +1,32 @@
 #!/bin/csh
+
+continuing=true
 if ( ! `which python3` ) then
-    echo "Python3 not detected, install python with:"
-    echo "sudo apt update -y && sudo apt-get install python3.6 -y"
-    exit 1
+then
+    while true; do
+        read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
+        case $yn in
+            [Yy]* ) sudo apt update -y && sudo apt-get install python3.6 -y; break;;
+            [Nn]* ) continuing=false
+            * ) echo "Please answer yes (y/Y) or no (n/N).";;
+        esac
+    done
 endif
 
+if ( "$continuing" = true ) then
+
 if ( ! `which pip` ) then
-    echo "pip not found. Install pip with:"
-    echo "sudo apt update -y && sudo apt-get install python3-pip -y"
-    exit 1
+    while true; do
+        read -p "pip not detected. Would you like to automatically install python3-pip now with sudo apt-get? (y/n):" yn
+        case $yn in
+            [Yy]* ) sudo apt update -y && sudo apt-get install python3-pip -y; break;;
+            [Nn]* ) continuing=false
+            * ) echo "Please answer yes (y/Y) or no (n/N).";;
+        esac
+    done
 endif
+
+if ( "$continuing" = true ) then
 
 pip install openai
 
@@ -57,3 +74,5 @@ if ( ! `grep -q "alias gtpe=" $RCfile` ) then
 endif
 source $RCfile
 
+endif #continuing2
+endif #continuing1
