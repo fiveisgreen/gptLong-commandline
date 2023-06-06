@@ -49,13 +49,13 @@ Important Option Flags:
 * -v --version  print version.
 
 ## Setup 
-gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). You then have to   
+gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). Then have to set the location of the Meld executable in api/gpt\_command\_prompt\_edit\_loop.py on line 12.
 
 `git clone https://github.com/fiveisgreen/gptLong-commandline.git`
 
-Get your [OpenAI API key](https://platform.openai.com/account/api-keys) ready and call the setup script. 
-
 `cd gptLong-commandline`
+
+Get your [OpenAI API key](https://platform.openai.com/account/api-keys) ready and call the setup script. 
 
 In bash: 
 
@@ -65,7 +65,7 @@ In (t)csh:
 
 `source setup.csh`
 
-Then install the dependencies for GPT-3 sandbox below: 
+Dependencies for GPT-3 sandbox should be installed by these. See the Requirements section below.
 
 # GPT-3 Sandbox: Turn your ideas into demos in a matter of minutes
 
