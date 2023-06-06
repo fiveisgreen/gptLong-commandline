@@ -1,7 +1,7 @@
 #!/bin/csh
 
 set continuing = true
-if ( ! `which python3` ) then
+if ( `which python3` == "") then
     while( {true} )
         read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
         switch ($yn)
@@ -17,7 +17,7 @@ endif
 
 if ( "$continuing" = true ) then
 
-if ( ! `which pip` ) then
+if ( `which pip` == "" ) then
     while( {true} )
         read -p "pip not detected. Would you like to automatically install python3-pip now with sudo apt-get? (y/n):" yn
         switch ($yn)
@@ -35,9 +35,9 @@ if ( "$continuing" = true ) then
 
 pip install openai
 
-if ( ! `which yarn` ) then
+if ( `which yarn` == "") then
     echo "yarn not detected, Installing..."
-    if ( ! `which npm` ) then
+    if ( `which npm` == "") then
         echo "nvm not detected, installing it:"
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | csh
     endif
