@@ -1,6 +1,6 @@
 #!/bin/csh
 
-continuing=true
+set continuing = true
 if ( ! `which python3` ) then
     while( {true} )
         read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
@@ -8,7 +8,7 @@ if ( ! `which python3` ) then
             case [Yy]: 
                 sudo apt update -y && sudo apt-get install python3.6 -y; break;
             case [Nn]: 
-                continuing=false; break;
+                set continuing = false; break;
             default:
                echo "Please answer yes (y/Y) or no (n/N)."; breaksw
         endsw
@@ -24,7 +24,7 @@ if ( ! `which pip` ) then
             case [Yy]: 
                 sudo apt update -y && sudo apt-get install python3-pip -y; break;
             case [Nn]: 
-                continuing=false; break;
+                set continuing = false; break;
             default:
                echo "Please answer yes (y/Y) or no (n/N)."; breaksw
         endsw
