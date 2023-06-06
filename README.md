@@ -1,20 +1,59 @@
 # Command-line Interface 
-This is a fork of the GPT-3 Sandbox described more below. This fork adds python based shell commands for interacting with OpenAI models from a linux the command line (developed on WSL2/Ubuntu20.04 on Windows 10). These commands support processing of arbitrarily long text files. Long files are automatically chunked and processed, then restitched. 
+This is a fork of the GPT-3 Sandbox described more below. This fork adds python based shell commands for interacting with OpenAI models from a linux the command line (developed on WSL2/Ubuntu20.04 on Windows 10). 
 
-Two commands are made available `gpt` and `gpte`. 
+Two commands are made available `gpt` and `gpte`. `gpte` can be used to edit arbitrarily long text files according to an edit prompt, by chunking the long file, calling the edit/system prompt along with the chunk, and then stitching the resut. `gpt` calls a basic single-prompt single-answer interaction, GPT-3 style. 
+
+For both, use the -c or --code options to change to code oriented models. 
 
 ## The gpt command 
-The `gpt` command takes in a prompt and produces a single result. 
+The `gpt` command takes in a prompt and produces a single result. The prompt can have multiple parts, and can mix command-line text and multiple file prompt components. Call gpt -h for full usage details. 
+
+### Examples:  
+
+> gpt "What is the Capital of France?" 
+
+Most basic use, prompts text-davinci-003, aka GPT-3.
+
+> gtp "Write a hiku about being put on call holding" --temp 0.9 -p 2 -q 2
+
+Manually set temperature, presence, and frequency penalties. The gtp command is also defined for typo correction, and is identical to gpt.
+
+> gpt "What is the Capital of France?" -o outputFile.txt --echo
+
+-o writes the responce to outputFile.txt, and since the --echo/-e option is used, the prompt is also echoed into that file. 
+
+> gpt -f promptFile1.txt promptFile2.txt -o outputFile.txt "My prompt prefix" "My prompt suffix" --disable --verbose
+
+This will take as prompt the prompt prefix, then the contents of the prompt files, then the suffix. All are seperated by \n in the final prompt. This is useful for engineering a prompt structure that frames some content stored in the files. There is no limit to the number of prompt files other than the model's token limit. 
+--disable/-d prevent the command from actually calling GPT. Use this for prompt command development. --verbose prints what the script is doing in detail. 
+
+> gpt -f myBuggyCode.cpp -c "Serve as an expert software test engineer and identify bugs in the following code:" 
+
+Turn on code mode and use the code-davinci-002 model. 
+
 
 ## The gpte command 
-The `gpt` command takes in a prompt and produces a single result. 
+The `gpte` is centered around file editing. It takes two prompts: an instruction prompt and a body prompt. 
+
+### Usage Examples 
+> gtpe "my instruction prompt" -f bodyFile [-o outfile]
+> gpte "my instruction prompt" "my body prompt to edit"
+> gtpe -f bodyFile1 -i instrFile1 instrFile2 [-o outfile]
+
+Important Option Flags:
+* -g --gtp3     switch the model from edit mode (text-davinci-edit-001) with 2 prompts to text-davinci-003 wiht a merged instruction and body.
+* -c --code     switch engine to code mode code-davinci-edit-001 (code-davinci-002 if combined with -g).
+* -e --echo     prints prompt and responce to terminal
+* -v --verbose  turn on verbose printint
+* -d --disable  disables GTP-3 call for debugging
+* -v --version  print version.
 
 ## Setup 
 gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). You then have to   
 
 `git clone https://github.com/fiveisgreen/gptLong-commandline.git`
 
-Get your OpenAI API key ready and call the setup script. 
+Get your [OpenAI API key](https://platform.openai.com/account/api-keys) ready and call the setup script. 
 
 `cd gptLong-commandline`
 
