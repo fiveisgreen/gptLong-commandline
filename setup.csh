@@ -15,7 +15,7 @@ if ( `which python3` == "") then
     end
 endif
 
-if ( "$continuing" = true ) then
+if ( "$continuing" == true ) then
 
 if ( `which pip` == "" ) then
     while( {true} )
@@ -31,7 +31,7 @@ if ( `which pip` == "" ) then
     end
 endif
 
-if ( "$continuing" = true ) then
+if ( "$continuing" == true ) then
 
 pip install openai
 
