@@ -11,7 +11,7 @@ then
             * ) echo "Please answer yes (y/Y) or no (n/N).";;
         esac
     done
-endif
+fi
 
 if [ "$continuing" = true ]; then
 

@@ -2,7 +2,6 @@
 
 continuing=true
 if ( ! `which python3` ) then
-then
     while( {true} )
         read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
         switch ($yn)
