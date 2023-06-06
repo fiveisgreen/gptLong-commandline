@@ -2,8 +2,10 @@
 
 set continuing = true
 if ( `which python3` == "") then
-    while( {true} )
-        read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
+    while( 1 )
+        echo "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):"
+        #read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
+        set yn = $<
         switch ($yn)
             case [Yy]: 
                 sudo apt update -y && sudo apt-get install python3.6 -y; break;
@@ -18,8 +20,10 @@ endif
 if ( "$continuing" == true ) then
 
 if ( `which pip` == "" ) then
-    while( {true} )
-        read -p "pip not detected. Would you like to automatically install python3-pip now with sudo apt-get? (y/n):" yn
+    while( 1 )
+        echo "pip not detected. Would you like to automatically install python3-pip now with sudo apt-get? (y/n):" 
+        set yn = $<
+        #read -p "pip not detected. Would you like to automatically install python3-pip now with sudo apt-get? (y/n):" yn
         switch ($yn)
             case [Yy]: 
                 sudo apt update -y && sudo apt-get install python3-pip -y; break;
