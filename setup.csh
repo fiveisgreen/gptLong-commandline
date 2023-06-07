@@ -3,12 +3,11 @@
 set continuing = true
 if ( `which python3` == "") then
     while( 1 )
-        echo "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):"
-        #read -p "Python3 not detected. Would you like to automatically install python 3.6 now with sudo apt-get? (y/n):" yn
+        echo "Python3 not detected. Would you like to automatically install python 3.8 now with sudo apt-get? (y/n):"
         set yn = $<
         switch ($yn)
             case [Yy]: 
-                sudo apt update -y && sudo apt-get install python3.6 -y; break;
+                sudo apt update -y && sudo apt-get install python3.8 -y; break;
             case [Nn]: 
                 set continuing = false; break;
             default:
