@@ -44,7 +44,7 @@ Encoding = "utf8" #
 PYTHONUTF8=1 #Put Python in UTF-8 mode, good for WSL and windows operations https://docs.python.org/3/using/windows.html#utf-8-mode
 
 prompt_fname = "raw_prompt.txt" #default. #copy prompt body to this file, which will be used for meld.
-maxTokens  = 2500 #max tokens that the model can handle, or max that you're willing to supply, probably can go to 4096
+maxTokens  = 2000 #max tokens that the model can handle, or max that you're willing to supply, probably can go to 4096
 
 #Argparse 
 #argparse documentation: https://docs.python.org/3/library/argparse.html
@@ -125,10 +125,11 @@ backup_gtp_file = "gtpoutput_backup.txt"
         prompt_fname = prefix+"__prmoptRaw"+extension """
 if args.files: 
         if Prompt == "":
-            with open(args.files, 'r', encoding=Encoding) as fin:
+            with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
                 Prompt = fin.read() 
+                #if that doesn't work, try with open(path, 'rb') as f:
         else: 
-            with open(args.files, 'r', encoding=Encoding) as fin:
+            with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
                 Prompt += '\n' + fin.read() 
 
         prefix, extension = parse_fname(args.files)
@@ -148,10 +149,10 @@ if Prompt == "":
 if args.instruction_files: 
     for fname in args.instruction_files:
         if Instruction == "":
-            with open(fname, 'r', encoding=Encoding) as fin:
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
                 Instruction = fin.read()
         else: 
-            with open(fname, 'r', encoding=Encoding) as fin:
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
                 Instruction += '\n' + fin.read() 
 if args.prompt_inst:
     if Instruction == "":

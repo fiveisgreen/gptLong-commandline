@@ -68,10 +68,10 @@ if args.prompt:
 if args.file: #if args.file != "dud": 
     for fname in args.file:
         if Prompt == "":
-            with open(fname, 'r') as fin:
+            with open(fname, 'r', errors='ignore') as fin:
                 Prompt = fin.read()#encoding="utf-8")
         else: 
-            with open(fname, 'r') as fin:
+            with open(fname, 'r', errors='ignore') as fin:
                 Prompt += '\n' + fin.read() 
 if args.prompt_epilog:
     Prompt += '\n' + args.prompt_epilog
