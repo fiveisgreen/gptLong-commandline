@@ -35,7 +35,7 @@ Optional Model Parameters
 
 
 """SETTINGS"""
-meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe"
+meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe" #don't use backslashes before spaces
 #list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
 Encoding = "utf8" #
 #Encoding = "latin1" #ok regardless of utf8 mode, but tends to wrech singla and double quotation marks
@@ -332,9 +332,10 @@ os.system("cp "+args.out+" "+backup_gtp_file+" &")
 print("meld "+prompt_fname +" "+args.out+" &")
 print("vimdiff "+prompt_fname +" "+args.out)
 if os.path.exists(meld_exe_file_path):
-    os.system(meld_exe_file_path + " " + prompt_fname +" "+args.out+" &")
+    meld_exe_file_path_callable = meld_exe_file_path.replace(" ", "\ ")
+    os.system(f"{meld_exe_file_path_callable} {prompt_fname} {args.out} &")
 else:
-    print("Meld not found at path ",meld_exe_file_path ,". Try vimdiff or diff manually")
+    print(f"Meld not found at path {meld_exe_file_path}. Try vimdiff or diff manually")
 """    try:
         os.system("vimdiff --version")
         os.system("vimdiff " + prompt_fname +" "+args.out+" &")
