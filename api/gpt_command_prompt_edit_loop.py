@@ -35,7 +35,7 @@ Optional Model Parameters
 
 
 """SETTINGS"""
-meld_exe_file_path = "/mnt/c/Program\ Files/Meld/MeldConsole.exe"
+meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe"
 #list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
 Encoding = "utf8" #
 #Encoding = "latin1" #ok regardless of utf8 mode, but tends to wrech singla and double quotation marks
@@ -59,7 +59,7 @@ parser.add_argument("-o", dest="out", help="Responce output file", default = "gp
 parser.add_argument('-g', '--gpt3', action='store_true', help='Do not use inline editing models, and use usual GTP-3 with merged instructions and prompt.')
 parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality')
 
-parser.add_argument("-n", dest="max_tokens", type=int, help="Maximum word count (really token count) of responce. Negative n will set max based on body prompt length, in units of 10% of body prompt length. Max = -n*prompt_tokens/10. So -10 limits output to the body prompt length. -15 may be a good choice, limiting output to 150% of body prompt length. In all cases,Max 4096.") 
+parser.add_argument("-n", dest="max_tokens", type=int, help="Maximum word count (really token count) of responce. Negative n will set max based on body prompt length, in units of 10%% of body prompt length. Max = -n*prompt_tokens/10. So -10 limits output to the body prompt length. -15 may be a good choice, limiting output to 150%% of body prompt length. In all cases,Max 4096.") 
 parser.add_argument("--top_p", type=float, help="top_p parameter. Controls diversity via nucleus sampling. 0.5 means half of all likelihood-weighted options are considered. Clamped to [0,1]", default = 1.0) 
 parser.add_argument("--temp", type=float, help="temperature parameter. Controls randomness. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Clamped to [0,1]", default = 0) 
 parser.add_argument("-q", dest="frequency_penalty", type=float, help="frequency_penalty parameter. How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model's likelihood of repeating the same line verbatim. Clamped to [0,2]", default = 0)
@@ -334,11 +334,14 @@ print("vimdiff "+prompt_fname +" "+args.out)
 if os.path.exists(meld_exe_file_path):
     os.system(meld_exe_file_path + " " + prompt_fname +" "+args.out+" &")
 else:
-    try:
+    print("Meld not found at path ",meld_exe_file_path ,". Try vimdiff or diff manually")
+"""    try:
         os.system("vimdiff --version")
         os.system("vimdiff " + prompt_fname +" "+args.out+" &")
     except:
+        print("vimdiff not found, resorting to diff :-/ ")
         os.system("diff " + prompt_fname +" "+args.out+" &")
+        """
 
 with open("ok",'w') as fs:
     if args.files:
