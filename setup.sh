@@ -64,6 +64,14 @@ else
   echo "export OPENAI_API_KEY=$LICENSE_KEY" >> $RCfile
 fi
 
+if [ ! `grep -q "alias chatgpt=" $RCfile` ]; then
+  echo "alias chatgpt='python3 `pwd`/api/chatGPT.py'" >> $RCfile
+  echo "Command 'chatgpt' is now defined."
+fi
+if [ ! `grep -q "alias chatgtp=" $RCfile` ]; then
+  echo "alias chatgtp='python3 `pwd`/api/chatGPT.py'" >> $RCfile
+fi
+
 if [ ! `grep -q "alias gpt=" $RCfile` ]; then
   echo "alias gpt='python3 `pwd`/api/gpt_command_prompt.py'" >> $RCfile
   echo "Command 'gpt' is now defined."

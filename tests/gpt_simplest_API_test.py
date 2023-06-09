@@ -18,7 +18,8 @@ print("Prompt", Prompt)
 
 Response = openai.Completion.create( model=Model, prompt=Prompt)
 
-print("Response:", Response.choices[0].text) 
+print("Response:")
+print(Response.choices[0].text) 
 #Correct behavior: A responce from the AI saying there is no one capital of Africa
 #Incorrect output: Crashing, probalby with an openAI.error.AuthenticationError
 
