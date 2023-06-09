@@ -92,6 +92,9 @@ if verbose:
     print("Prompt: ")
     print(Prompt)
 
+mac_mode = False
+if sys.platform == "darwin":
+    mac_mode = True
 
 ##OTHER GPT3 Examples##
 #gpt = GPT(engine="davinci", temperature=0.5, max_tokens=Max_Tokens)
@@ -132,5 +135,8 @@ if not args.disable:
         with open(args.out,'w') as fout:
             fout.write(response.choices[0].text) 
     
-    os.system("/mnt/c/windows/system32/notepad.exe "+args.out+" &")
+    if mac_mode:
+        os.system(f"open -a textEdit {args.out} &")
+    else:
+        os.system("/mnt/c/windows/system32/notepad.exe "+args.out+" &")
 
