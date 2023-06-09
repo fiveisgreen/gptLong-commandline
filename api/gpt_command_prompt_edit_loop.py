@@ -101,16 +101,15 @@ if args.gpt3:
         Model = "code-davinci-002"
     else:
         Model = "text-davinci-003"
+    if args.frequency_penalty:
+        print("Note that with -g/--gtp3, the frequency_penalty option does nothing")
+    if args.presence_penalty:
+        print("Note that with -g/--gtp3, the presence_penalty option does nothing")
 else:
     if args.code:
         Model = "code-davinci-edit-001"
     else:
         Model = "text-davinci-edit-001"
-
-    if args.frequency_penalty:
-        print("Note that with -g/--gtp3, the frequency_penalty option does nothing")
-    if args.presence_penalty:
-        print("Note that with -g/--gtp3, the presence_penalty option does nothing")
 
 backup_gtp_file = "gtpoutput_backup.txt" 
 #Body Prompt
@@ -127,6 +126,10 @@ backup_gtp_file = "gtpoutput_backup.txt"
         args.out = prefix+"__gtpMeld"+extension 
         backup_gtp_file = prefix+"__gtpRaw"+extension 
         prompt_fname = prefix+"__prmoptRaw"+extension """
+output_file_set = False
+if args.out:
+    output_file_set = True
+
 if args.files: 
         if Prompt == "":
             with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
@@ -137,7 +140,8 @@ if args.files:
                 Prompt += '\n' + fin.read() 
 
         prefix, extension = parse_fname(args.files)
-        args.out = prefix+"__gtpMeld"+extension 
+        if not args.out:
+            args.out = prefix+"__gtpMeld"+extension 
         backup_gtp_file = prefix+"__gtpRaw"+extension 
         prompt_fname = prefix+"__prmoptRaw"+extension 
 if args.prompt_body:
@@ -350,10 +354,10 @@ else:
         """
 print(f"vimdiff {prompt_fname} {args.out}")
 print("If you have a meld alias setup:")
-print("meld {prompt_fname} {args.out} &")
+print(f"meld {prompt_fname} {args.out} &")
 
 with open("ok",'w') as fs:
-    if args.files:
+    if not output_file_set:
         fs.write("mv " + args.out + " " +  args.files + '\n' )
     fs.write("rm " + prompt_fname + '\n')
     fs.write("rm " + backup_gtp_file + '\n' )
@@ -367,7 +371,10 @@ with open("reject",'w') as fs:
     fs.write("rm ok\n")
     fs.write("rm reject\n")
 if args.files: 
-    print(f"\nAfter meld/vimdiff, accept changes with \n$ sc ok\nwhich cleans temp files, and moves {args.out} into {args.files}")
+    if output_file_set:
+        print(f"\nAfter meld/vimdiff, accept changes with \n$ sc ok\nwhich cleans temp files. Final result is {args.out}.")
+    else:
+        print(f"\nAfter meld/vimdiff, accept changes with \n$ sc ok\nwhich cleans temp files, and overwrites the input file {args.out} with the output {args.files}")
 else:
     print(f"\nAfter meld/vimdiff, accept changes with \n$ sc ok\nwhich cleans temp files.")
 print("or reject changes with $ sc reject")
