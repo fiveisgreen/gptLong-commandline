@@ -5,7 +5,31 @@ Two commands are made available `gpt` and `gpte`. `gpte` can be used to edit arb
 
 For both, use the -c or --code options to change to code oriented models. 
 
-## The gpt command 
+## Setup 
+gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). Then have to set the location of the Meld executable in api/gpt\_command\_prompt\_edit\_loop.py on line 12.
+
+`git clone https://github.com/fiveisgreen/gptLong-commandline.git`
+
+`cd gptLong-commandline`
+
+Get your [OpenAI API key](https://platform.openai.com/account/api-keys) ready and call the setup script. 
+
+Check which shell you're using
+
+`echo $SHELL`
+
+For bash and sh:
+
+`source setup.sh`
+
+(For tcsh and csh you can run `source setup.csh`. This is almost certainly unnecessary and you should always be able to run setup.sh no matter which shell you're using)
+
+Dependencies for GPT-3 sandbox should be installed by these. If there's any trouble installing the dependencies, see the Requirements section below.
+
+### Test the installation: 
+source `run_tests.sh`
+
+## Usage: The gpt command 
 The `gpt` command takes in a prompt and produces a single result. The prompt can have multiple parts, and can mix command-line text and multiple file prompt components. Call gpt -h for full usage details. 
 
 ### Examples:  
@@ -32,10 +56,10 @@ This will take as prompt the prompt prefix, then the contents of the prompt file
 Turn on code mode and use the code-davinci-002 model. 
 
 
-## The gpte command 
+## Usage: The gpte command 
 The `gpte` is centered around file editing. It takes two prompts: an instruction prompt and a body prompt. 
 
-### Usage Examples 
+### Examples:
 > gtpe "my instruction prompt" -f bodyFile [-o outfile]
 > gpte "my instruction prompt" "my body prompt to edit"
 > gtpe -f bodyFile1 -i instrFile1 instrFile2 [-o outfile]
@@ -48,24 +72,15 @@ Important Option Flags:
 * -d --disable  disables GTP-3 call for debugging
 * -v --version  print version.
 
-## Setup 
-gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). Then have to set the location of the Meld executable in api/gpt\_command\_prompt\_edit\_loop.py on line 12.
+## Troubleshooting 
+### AuthenticaionError
+This may indicate a probem with the API key, but I still don't understand this error category. 
+### RateLimitError
+"openai.error.RateLimitError: The server had an error while processing your request. Sorry about that!"
+Seems to have to do with sending a lot of API calls quickly, particularly using gpte, which chunks large documents and can make many API calls quickly. 
 
-`git clone https://github.com/fiveisgreen/gptLong-commandline.git`
-
-`cd gptLong-commandline`
-
-Get your [OpenAI API key](https://platform.openai.com/account/api-keys) ready and call the setup script. 
-
-In bash: 
-
-`source setup.sh`
-
-In (t)csh:
-
-`source setup.csh`
-
-Dependencies for GPT-3 sandbox should be installed by these. See the Requirements section below.
+---
+---
 
 # GPT-3 Sandbox: Turn your ideas into demos in a matter of minutes
 

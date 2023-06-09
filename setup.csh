@@ -80,7 +80,11 @@ endif
 if ( ! `grep -q "alias gtpe=" $RCfile` ) then
   echo "alias gtpe='python3 `pwd`/api/gpt_command_prompt_edit_loop.py'" >> $RCfile
 endif
+echo "Reloading shell startup configuration"
 source $RCfile
+
+echo "The system variable OPEN_AI_KEY is now"
+echo $OPEN_AI_KEY
 
 endif #continuing2
 endif #continuing1

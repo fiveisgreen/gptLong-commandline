@@ -1,0 +1,1 @@
+This file needs it's dates reformatted. Please find and reformat dates from year.month.day to day.month.year. For example, lines like <td colspan="1">2020.06.09</td></tr> should be reformatted to <td colspan="1">09.06.2020</td></tr>

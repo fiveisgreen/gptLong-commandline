@@ -1,0 +1,625 @@
+
+<p class="auto-cursor-target"><br /></p>
+<table class="relative-table wrapped" style="width: 48.5754%;"><colgroup><col style="width: 47.8582%;" /><col style="width: 21.4882%;" /><col style="width: 18.1931%;" /><col style="width: 12.5018%;" /></colgroup>
+<tbody>
+<tr>
+<th>Meeting Notes</th>
+<th colspan="1">
+<p>Comments - Special topics</p></th>
+<th>Author</th>
+<th colspan="1">Date</th></tr>
+<tr>
+<td><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_09_06_2020.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td>S. Jaborwalki</td>
+<td colspan="1">2020.06.09</td></tr>
+<tr>
+<td><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_23_06_2020.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td>S. Jaborwalki</td>
+<td colspan="1">2020.06.23</td></tr>
+<tr>
+<td><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_07_07_2020.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td>S. Jaborwalki</td>
+<td colspan="1">2020.07.07</td></tr>
+<tr>
+<td><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_14_07_2020.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td>S. Jaborwalki</td>
+<td colspan="1">2020.07.14</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_18_08_2020.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.08.18</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_01_09_2020.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.09.01</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_29_09_2020.docx" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.09.29</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_13_10_2020.docx" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.10.13</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_27_10_2020.docx" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.10.27</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_10_11_2020.docx" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.11.10</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_08_12_2020.pdf" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.12.08</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_15_12_2020.pdf" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2020.12.15</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_19_01_2021.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.01.19</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_04_02_2021.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">H.T. Drummer</td>
+<td colspan="1">2021.02.04</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_16_02_2021.pdf" /></ac:link></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p><br /></p></div></td>
+<td colspan="1">J. Kentucky</td>
+<td colspan="1">2021.02.16</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_02_03_2021.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.03.02</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_16_03_2021.pdf" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.03.16</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_13_04_2021.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.04.13</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_27_04_2021.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.04.27</td></tr>
+<tr>
+<td colspan="1">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_11_05_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20210511.pptx" /></ac:link></p></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.05.11</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_25_05_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20210525.pptx" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.05.25</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_08_06_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20210608.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Zynq UltraScale+ RFSoC Gen.3 - evaluation of the ADCs and DACs performance.pdf" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.06.08</td></tr>
+<tr>
+<td colspan="1"><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_17_08_2021.pdf" /></ac:link></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.08.17</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="FOFB simulations_V1.pptx" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2021.08.31</td></tr>
+<tr>
+<td colspan="1">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_14_09_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20210914.pptx" /></ac:link></p></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.09.14</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_28_09_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20210928r.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="FOFB simulations_V2.pptx" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki, S.Pipper</td>
+<td colspan="1">2021.09.28</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_19_10_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Transverse Feedback Requirements.pdf" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">
+<p>R. Bartlet,</p>
+<p>H. Scalder,&nbsp;</p>
+<p>S. Jaborwalki</p></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>19.10.2021</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_26_10_2021.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20211026.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Understandig_PETRA_IV.pdf" /></ac:link></p>
+<p><br /></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.10.26</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_09_11_2021.pdf" /></ac:link></p>
+<p><a href="https://confluence.wacky.de/x/JouiDQ">https://confluence.wacky.de/x/JouiDQ</a></p><ac:link><ri:attachment ri:filename="vibrations task force 30 sept 2021.pptx" /></ac:link></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">9.11.2021</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_16_11_2021.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20211116.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Notes_pIV-TC-Meeting_20211116.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="MBFB_Noise+Teststand.pdf" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S. Jaborwalki</td>
+<td colspan="1">2021.11.16</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_23_11_2021.docx" /></ac:link></p>
+<p>Presentation:</p>
+<ul>
+<li><ac:link><ri:attachment ri:filename="GLoisch_211118_MBFB_kicker_position_calc.pdf" /></ac:link></li>
+<li><ac:link><ri:attachment ri:filename="SAntipov_CB Growth rates P4.pdf" /></ac:link></li>
+<li><ac:link><ri:attachment ri:filename="SJaborwalki_MBFB_Noise_Kicker.pptx" /></ac:link></li></ul></div></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>MBFB - follow up</p>
+<p><br /></p></div></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2021.11.23</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_14_12_2021.docx" /></ac:link></p></div><ac:link><ri:attachment ri:filename="20211215_pres_SA.pdf" /><ac:plain-text-link-body><![CDATA[Slides_SAntipov.pdf]]></ac:plain-text-link-body></ac:link></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>MBFB - follow up</p>
+<p><br /></p></div></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2021.12.14</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_21_12_2021.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20211221.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Transversal MBFB Project Status.pptx" /></ac:link></p></div></td>
+<td colspan="1">MBFB - conceptional design</td>
+<td colspan="1">S. Jaborwalki, S.Pipper</td>
+<td colspan="1">2021.12.21</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_04_01_2022.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220104.pptx" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>04.01.2022</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_11_01_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">MBFB - follow up</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.01.11</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_18_01_2022.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220118.pptx" /></ac:link></p></div></td>
+<td colspan="1"><br /></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.01.18</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_01_02_2022.docx" /></ac:link></p>
+<p>Kicker summary: <a href="https://confluence.wacky.de/x/w2QwDg">https://confluence.wacky.de/x/w2QwDg</a></p></div></td>
+<td colspan="1">MBFB - follow up</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>01.02.2022</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_01_03_2022.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220301.pptx" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.03.01</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.09_15_03_2022.docx" /></ac:link></p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220315.pptx" /></ac:link></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.03.15</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_29_03_2022.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220329.pptx" /></ac:link></p></div><ac:link><ri:attachment ri:filename="20220322_TC_minutes.txt" /></ac:link></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.03.29</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_12_04_2022.docx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20220412.txt" /><ac:plain-text-link-body><![CDATA[MachineCoordinationMeeting20220412.txt]]></ac:plain-text-link-body></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.04.12</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20220503_TC.txt" /></ac:link></p></div><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_10_05_2022.docx" /></ac:link>
+<p><ac:link><ri:attachment ri:filename="Hardware and Software Architecture.png" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="MBFB_Algorithm.png" /><ac:plain-text-link-body><![CDATA[MBFB Algorithm.png]]></ac:plain-text-link-body></ac:link></p></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>Update round + MBFB FW/SW needs</p></div></td>
+<td colspan="1">S.Pipper, S. Jaborwalki</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>10.05.2022</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20220511_MC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220524.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_24_05_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>24.05.2022</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20220705_MC_Meeting.txt" /></ac:link></p></div>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220705.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_05_07_2022.docx" /></ac:link></p></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.07.05</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20220712_TC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220719.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_19_07_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.07.19</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20220802_MC_Meeting.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220802.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_02_08_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">Budget planning</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.08.02</td></tr>
+<tr>
+<td colspan="1">
+<p><ac:link><ri:attachment ri:filename="KickerShuntImpedance&amp;DampingTime.pdf" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="SS_West_v4.0_16.08.22.pdf" /></ac:link></p>
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_16_08_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">MBFB update</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.08.16</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20220823_TC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20220830_MC_meeting.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20220830.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_30_08_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">Room book, TAC, PBS (Teamcenter)</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.08.30</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20221011.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20220906_TC_SM.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Minutes-P4-PG3.08_11_10_2022.docx" /></ac:link></p></div></td>
+<td colspan="1">TC, TAC, Redmine, Roombook-Rack planning</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>11.10.2022</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221025_MC_meeting.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20221108.txt" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.11.08</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221110_MBFB_update.txt" /></ac:link></p></div></td>
+<td colspan="1">MBFB update</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.11.10</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221115_TC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20221115.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20221115.txt" /></ac:link></p></div></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>HW / FW update / roadmap</p></div></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.11.15</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221122_MC_meeting.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20221122.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20221122.txt" /></ac:link></p></div></td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>Update round</p></div></td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.11.22</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221129_TC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20221129.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20221129.txt" /></ac:link></p></div></td>
+<td colspan="1">Magnet teststand</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.11.29</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221213_TC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20221213.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20221213.txt" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.12.13</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20221220_MC_meeting.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20221220.pptx" /></ac:link></p></div></td>
+<td colspan="1">Project proposal</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2022.12.20</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20230103.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230103.txt" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>03.01.2023</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20230110.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230110.txt" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">
+<div class="content-wrapper">
+<p>10.01.2023</p></div></td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20230117.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.08_Meeting_20230117-teststand.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230117.txt" /></ac:link></p></div></td>
+<td colspan="1">Test stand</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2023.01.17</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20230124.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230124.txt" /></ac:link></p></div></td>
+<td colspan="1">TAC update</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2023.01.24</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20230131.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230131.txt" /></ac:link></p></div></td>
+<td colspan="1">Teamcenter tables</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2023.01.31</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.09_Meeting_20230207.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230207.txt" /></ac:link></p></div></td>
+<td colspan="1">Upodate round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2023.02.07</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20230221.txt" /></ac:link></p></div></td>
+<td colspan="1">MPC/MDI/MSK round</td>
+<td colspan="1">S. H. Mirza</td>
+<td colspan="1">2023.02.21</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.08 meeting_28_02.pptx" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S. H. Mirza</td>
+<td colspan="1">2023.02.28</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.08 meeting_07_03.pptx" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S. H. Mirza</td>
+<td colspan="1">2023.03.07</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.08 meeting_14_03.pptx" /></ac:link></p></div></td>
+<td colspan="1">Update round / TAC presentation</td>
+<td colspan="1">S. H. Mirza</td>
+<td colspan="1">2023.03.14</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="21032023.txt" /></ac:link></p></div></td>
+<td colspan="1">Short update round</td>
+<td colspan="1">S. H. Mriza</td>
+<td colspan="1">2023.03.21</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.08_Meeting_20230404.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230404.txt" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2023.04.04</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20230418_TC.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="PG3.08_Meeting_20230418.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230418.txt" /></ac:link></p></div></td>
+<td colspan="1">Update round</td>
+<td colspan="1">S.Pipper</td>
+<td colspan="1">2023.04.18</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.08_Meeting_20230425.pptx" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="20230425.txt" /></ac:link></p>
+<p><ac:link><ri:attachment ri:filename="Girder_correction_25_4_PG3.08.pptx" /></ac:link></p>
+<p>Summary slides for meeting with Riccardo:</p>
+<ul>
+<li><ac:link><ri:attachment ri:filename="Girder_correction_position_PG3.08.pptx" /></ac:link></li></ul></div></td>
+<td colspan="1">Girder position measurements</td>
+<td colspan="1">S.Pipper, S.Mirza</td>
+<td colspan="1">2023.04.25</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="20230509.txt" /></ac:link></p>
+<p><br /></p></div></td>
+<td colspan="1">Advanced software concepts&nbsp;</td>
+<td colspan="1">S.Pipper<br />A.Baker</td>
+<td colspan="1">2023.05.09</td></tr>
+<tr>
+<td colspan="1">
+<div class="content-wrapper">
+<p><ac:link><ri:attachment ri:filename="PG3.08_Meeting_20230606.pptx" /></ac:link></p></div></td>
+<td colspan="1">MBFB HW review</td>
+<td colspan="1">
+<p>S.Jaborwalki</p>
+<p>S.Pipper</p></td>
+<td colspan="1">2023.06.06</td></tr></tbody></table>
+<p><br /></p>
+<p class="auto-cursor-target"><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+<p><br /></p>
+
