@@ -17,9 +17,10 @@ $ gtpe -f body_file1 -i instr_file1 instr_file2 [-o outfile]
 $ gtpe ["instructions"] ["body epilog"] [-f body.txt] [-i instruction1.txt instrcution2.txt] [-o outfile.txt] [params] [flags]
 
 Flags:
-# -g --gtp3     switch engine from edit mode to merged prompt mode with instruction prolog.
+# -e --edit     switch engine to an edit oriented model
 # -c --code     switch engine to code mode
-# -e --echo     prints prompt and responce to terminal
+# --old         switch engine from edit mode to merged prompt mode with instruction prolog.
+# --echo     prints prompt and responce to terminal
 # -v --verbose  turn on verbose printint
 # -d --disable  disables GTP-3 call for debugging
 # -v --version  print version.
@@ -31,6 +32,11 @@ Optional Model Parameters
 -p [0..2]       #presence_penalty, turn up encourages discussion diversity. Use only with -g.
 -q [0..2]       #frequency_penalty, turn up discourages repetition. Use only with -g. 
 
+TODO:
+    - [ ] fix the max_tokens mess
+    - [ ] input tokens model dependent
+    - [ ] use gpt-3.5-turbo
+    - [ ] make inputToken_safety_margin a commandline parameter
 """
 
 
@@ -48,7 +54,7 @@ Encoding = "utf8" #
 PYTHONUTF8=1 #Put Python in UTF-8 mode, good for WSL and windows operations https://docs.python.org/3/using/windows.html#utf-8-mode
 
 prompt_fname = "raw_prompt.txt" #default. #copy prompt body to this file, which will be used for meld.
-maxTokens  = 2000 #max tokens that the model can handle, or max that you're willing to supply, probably can go to 4096
+inputToken_safety_margin = 0.8 #TODO set this as a commandline parameter
 
 #Argparse 
 #argparse documentation: https://docs.python.org/3/library/argparse.html
@@ -60,16 +66,18 @@ parser.add_argument("-f","--files", help="Prompt file of body text to be edited.
 parser.add_argument("-i", dest="instruction_files", nargs='+', help="Prompt files, to be used for edit instructions.") 
 parser.add_argument("-o", dest="out", help="Responce output file", default = "gptoutput.txt")  
 
-parser.add_argument('-g', '--gpt3', action='store_true', help='Do not use inline editing models, and use usual GTP-3 with merged instructions and prompt.')
-parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality')
+parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around  text editing')
+parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. If combined with --old, uses code-davinci-002 with merged instruction and body and double the max input tokens')
+parser.add_argument('--old', action='store_true', help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.')
 
 parser.add_argument("-n", dest="max_tokens", type=int, help="Maximum word count (really token count) of responce. Negative n will set max based on body prompt length, in units of 10%% of body prompt length. Max = -n*prompt_tokens/10. So -10 limits output to the body prompt length. -15 may be a good choice, limiting output to 150%% of body prompt length. In all cases,Max 4096.") 
+#The point here is to make sure chatGPT doesn't runaway. But this is really dumb since it's most likely to produce unwanted truncation. 
 parser.add_argument("--top_p", type=float, help="top_p parameter. Controls diversity via nucleus sampling. 0.5 means half of all likelihood-weighted options are considered. Clamped to [0,1]", default = 1.0) 
 parser.add_argument("--temp", type=float, help="temperature parameter. Controls randomness. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Clamped to [0,1]", default = 0) 
 parser.add_argument("-q", dest="frequency_penalty", type=float, help="frequency_penalty parameter. How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model's likelihood of repeating the same line verbatim. Clamped to [0,2]", default = 0)
 parser.add_argument("-p", dest="presence_penalty", type=float, help="presence_penalty parameter. How much to penalize new tokens based on whether they appear in the text so far. Increaces the model's likelihood to talk about new topics. Clamped to [0,2]", default = 0)
 
-parser.add_argument('-e', '--echo', action='store_true', help='Print Prompt as well as responce')
+parser.add_argument('--echo', action='store_true', help='Print Prompt as well as responce')
 parser.add_argument('--verbose', action='store_true', help='Spew everything')
 parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
 parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.2.0') 
@@ -87,7 +95,7 @@ def parse_fname(fname): #parse file names, returning the mantissa, and .extensio
 #Model parameter prototypes: 
 Instruction = ""
 Prompt = ""
-Max_Tokens = 256 #meaningless placeholder.
+maxOutputTokens = 256 #meaningless placeholder.
 Top_p= clamp(args.top_p ,0.0,1.0) #1.0
 Temp = clamp(args.temp ,0.0,1.0) #0
 Frequency_penalty = clamp(args.frequency_penalty ,0.0,2.0) #0
@@ -96,20 +104,34 @@ Presence_penalty = clamp(args.presence_penalty ,0.0,2.0) #0
 ######### Input Ingestion ##############
 
 #Set Model
-if args.gpt3:
+use_chatGPT = True
+Model = "gpt-3.5-turbo"
+maxInputTokens  = 4096 #max tokens that the model can handle, or max that you're willing to supply, probably can go to 4096
+if args.old:
     if args.code:
         Model = "code-davinci-002"
+        maxInputTokens = 8001 #https://platform.openai.com/docs/models/gpt-3-5
+        use_chatGPT = False
     else:
         Model = "text-davinci-003"
+        maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
+        use_chatGPT = False
     if args.frequency_penalty:
         print("Note that with -g/--gtp3, the frequency_penalty option does nothing")
     if args.presence_penalty:
         print("Note that with -g/--gtp3, the presence_penalty option does nothing")
-else:
-    if args.code:
+elif args.code:
         Model = "code-davinci-edit-001"
-    else:
+        maxInputTokens = 4097 #pure guess
+        use_chatGPT = False
+elif args.edit:
         Model = "text-davinci-edit-001"
+        maxInputTokens = 4097 #pure guess
+        use_chatGPT = False
+
+
+#make a safety margin on the input tokens
+maxInputTokens = int(inputToken_safety_margin * maxInputTokens )
 
 backup_gtp_file = "gtpoutput_backup.txt" 
 #Body Prompt
@@ -171,19 +193,18 @@ if Instruction == "":
     print("Instruction prompt is required, none was given. Exiting.")
     sys.exit()
 
-#Set Max_Tokens
+#Set maxOutputTokens
 if args.max_tokens:
         if args.max_tokens < 0:
             Prompt_tokens = count_tokens_approx(Prompt) 
-            Max_Tokens = max(4096,int(-args.max_tokens*Prompt_tokens/10))
+            maxOutputTokens = max(4096,int(-args.max_tokens*Prompt_tokens/10))
         else:
-            Max_Tokens = max(4096,args.max_tokens)
+            maxOutputTokens = max(4096,args.max_tokens)
         
-        
-        
-
 if args.verbose:
-    print("Max_Tokens ",Max_Tokens )
+    print("Model: ",Model)
+    print("maxInputTokens ",maxInputTokens )
+    print("maxOutputTokens ",maxOutputTokens )
     print("Top_p",Top_p)
     print("Temp",Temp)
 
@@ -253,7 +274,7 @@ with open(prompt_fname,'w') as fp:
     fp.write(Prompt)    
 
 #Main 
-#def run_loop( in_file_name, out_file_name, gtp_instructions,  maxTokens = 4095):
+#def run_loop( in_file_name, out_file_name, gtp_instructions,  maxInputTokens = 4095):
 with open(args.out,'w') as fout:
             if not args.disable:
                 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -262,10 +283,10 @@ with open(args.out,'w') as fout:
                 print("length of prompt body", len_prompt ) 
             chunk_start = 0
             i_chunk = 0
-            expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt, maxTokens )
+            expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt, maxInputTokens )
 
             while chunk_start < len_prompt:
-                chunk_end = chunk_start + token_cut_light.guess_token_truncate_cutint_safer(Prompt, maxTokens) 
+                chunk_end = chunk_start + token_cut_light.guess_token_truncate_cutint_safer(Prompt, maxInputTokens) 
                 chunk_end = rechunk(Prompt,len_prompt, chunk_start, chunk_end)
                 if args.verbose:
                     print("i_chunk",i_chunk, "chunk start", chunk_start,"end",chunk_end ) 
@@ -282,13 +303,54 @@ with open(args.out,'w') as fout:
                 if args.disable:
                      altchunk_course = chunk
                 else:
-                    if args.gpt3:
+                    if use_chatGPT:
+                        conversation = [{"role": "system", "content": Instruction}]
+                        conversation.append({"role":"user", "content": chunk})
+                        if args.max_tokens:
+                            altchunk_course = openai.ChatCompletion.create(
+                                    model=Model, 
+                                    messages=conversation,
+                                    temperature=Temp,
+                                    max_tokens=maxOutputTokens,
+                                    top_p=Top_p,
+                                    frequency_penalty=Frequency_penalty,
+                                    presence_penalty=Presence_penalty
+                                    ).choices[0].message.content
+                            """altchunk_course = openai.ChatCompletion.create(
+                                    model=Model,
+                                    messages=[{"role": "user", "content": Instruction+"\n\n"+chunk}],
+                                    temperature=Temp,
+                                    max_tokens=maxOutputTokens,
+                                    top_p=Top_p,
+                                    frequency_penalty=Frequency_penalty,
+                                    presence_penalty=Presence_penalty
+                                    ).choices[0].message.content"""
+                        else:
+                            altchunk_course = openai.ChatCompletion.create(
+                                    model=Model, 
+                                    messages=conversation,
+                                    temperature=Temp,
+                                    #max_tokens=maxOutputTokens,
+                                    top_p=Top_p,
+                                    frequency_penalty=Frequency_penalty,
+                                    presence_penalty=Presence_penalty
+                                    ).choices[0].message.content
+                            """altchunk_course = openai.ChatCompletion.create(
+                                    model=Model,
+                                    messages=[{"role": "user", "content": Instruction+"\n\n"+chunk}],
+                                    temperature=Temp,
+                                    #max_tokens=maxOutputTokens,
+                                    top_p=Top_p,
+                                    frequency_penalty=Frequency_penalty,
+                                    presence_penalty=Presence_penalty
+                                    ).choices[0].message.content """
+                    elif args.gpt3:
                         if args.max_tokens:
                             altchunk_course = openai.Completion.create(
                                     model=Model,
                                     prompt=Instruction+"\n\n"+chunk,
                                     temperature=Temp,
-                                    max_tokens=Max_Tokens,
+                                    max_tokens=maxOutputTokens,
                                     top_p=Top_p,
                                     frequency_penalty=Frequency_penalty,
                                     presence_penalty=Presence_penalty
@@ -298,7 +360,7 @@ with open(args.out,'w') as fout:
                                     model=Model,
                                     prompt=Instruction+"\n\n"+chunk,
                                     temperature=Temp,
-                                    #max_tokens=Max_Tokens,
+                                    #max_tokens=maxOutputTokens,
                                     top_p=Top_p,
                                     frequency_penalty=Frequency_penalty,
                                     presence_penalty=Presence_penalty
@@ -310,7 +372,7 @@ with open(args.out,'w') as fout:
                                     input=chunk,
                                     instruction=Instruction,
                                     temperature=Temp,
-                                    max_tokens=Max_Tokens,
+                                    max_tokens=maxOutputTokens,
                                     top_p=Top_p).choices[0].text
                         else:
                             altchunk_course = openai.Edit.create(
@@ -318,7 +380,7 @@ with open(args.out,'w') as fout:
                                     input=chunk,
                                     instruction=Instruction,
                                     temperature=Temp,
-                                    #max_tokens=Max_Tokens,
+                                    #max_tokens=maxOutputTokens,
                                     top_p=Top_p).choices[0].text
                 altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
                 #altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space+"@@@" #degug
