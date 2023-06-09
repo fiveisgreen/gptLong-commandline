@@ -35,7 +35,11 @@ Optional Model Parameters
 
 
 """SETTINGS"""
-meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe" #don't use backslashes before spaces
+meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe" #don't use backslashes before spaces. Don't worry about this if you're on mac. 
+mac_mode = False
+if sys.platform == "darwin": 
+    mac_mode = True
+
 #list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
 Encoding = "utf8" #
 #Encoding = "latin1" #ok regardless of utf8 mode, but tends to wrech singla and double quotation marks
@@ -329,9 +333,10 @@ with open(args.out,'w') as fout:
 
 #body input is already copied to prompt_fname
 os.system("cp "+args.out+" "+backup_gtp_file+" &")
-print("meld "+prompt_fname +" "+args.out+" &")
-print("vimdiff "+prompt_fname +" "+args.out)
-if os.path.exists(meld_exe_file_path):
+#print("meld "+prompt_fname +" "+args.out+" &")
+if mac_mode:
+    os.system(f"open -a Meld {prompt_fname} {args.out} &")
+elif os.path.exists(meld_exe_file_path):
     meld_exe_file_path_callable = meld_exe_file_path.replace(" ", "\ ")
     os.system(f"{meld_exe_file_path_callable} {prompt_fname} {args.out} &")
 else:
@@ -343,6 +348,9 @@ else:
         print("vimdiff not found, resorting to diff :-/ ")
         os.system("diff " + prompt_fname +" "+args.out+" &")
         """
+print(f"vimdiff {prompt_fname} {args.out}")
+print("If you have a meld alias setup:")
+print("meld {prompt_fname} {args.out} &")
 
 with open("ok",'w') as fs:
     if args.files:
