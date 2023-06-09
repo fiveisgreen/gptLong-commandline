@@ -1,4 +1,12 @@
-source tests/test_API.sh
-source tests/test_gpt.sh
-source tests/test_gpte1.sh
-source tests/test_gpte2.sh
+#!/bin/bash
+cat ./tests/test_API_readme.txt
+python3 tests/gpt_simplest_API_test.py
+
+cat ./tests/test_gpt_readme.txt
+gpt "What is the capital of France?" --verbose
+
+cat ./tests/test_gpte1_readme.txt
+gpte -f tests/umerr.txt -o tests/out.txt "Remove 'um's and other non-word blather from this transcript"
+
+cat ./tests/test_gpte2_readme.txt
+gpte -f tests/htmltable.txt -i tests/inst.txt
