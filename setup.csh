@@ -1,6 +1,16 @@
 #!/bin/csh
 
 set continuing = true
+if ( "$SHELL" == "/bin/bash" || "$SHELL" == "/bin/sh" ) then
+    set continuing  = false
+    source setup.sh
+else if ( "$SHELL" != "/bin/csh" && "$SHELL" != "/bin/tcsh" ) then
+    echo "shell `$SHELL` is not supported. Try bash, csh, or tcsh."
+    set continuing = false
+endif
+
+if ( "$continuing" == true ) then
+
 if ( `which python3` == "") then
     while( 1 )
         echo "Python3 not detected. Would you like to automatically install python 3.8 now with sudo apt-get? (y/n):"
@@ -113,3 +123,4 @@ echo $OPEN_AI_KEY
 
 endif #continuing2
 endif #continuing1
+endif #continuing0

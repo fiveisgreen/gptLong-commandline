@@ -1,6 +1,18 @@
 #!/bin/bash
 
 continuing=true
+#Make sure the shell is set correctly
+if [[ $SHELL = /bin/csh || $SHELL = /bin/tcsh ]]; then
+    continue=false
+    source setup.csh
+elif [[ ! ( $SHELL = /bin/sh || $SHELL = /bin/bash ) ]]; then
+    echo "shell `$SHELL` is not supported. Try bash, csh, or tcsh."
+    continue=false
+fi
+
+
+if [ "$continuing" = true ]; then
+
 if ! command -v python3 &> /dev/null
 then
     while true; do
@@ -108,3 +120,4 @@ echo $OPEN_AI_KEY
 
 fi #continuing2
 fi #continuing1
+fi #continuing0
