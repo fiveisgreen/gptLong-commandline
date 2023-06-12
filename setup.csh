@@ -98,6 +98,7 @@ if ( `grep -c "alias chatgpt " $RCfile` <= 0 ) then
   echo "Command 'chatgpt' is now defined."
 else
     echo "chatgpt command found."
+    grep "alias chatgpt " $RCfile
 endif
 if ( `grep -c "alias chatgtp " $RCfile` <= 0 ) then
   echo "alias chatgtp='python3 `pwd`/api/chatGPT.py'" >> $RCfile
@@ -108,6 +109,7 @@ if ( `grep -c "alias gpt " $RCfile` <= 0) then
   echo "Command 'gpt' is now defined."
 else
     echo "gpt command found."
+    grep "alias gpt " $RCfile
 endif
 
 if ( `grep -c "alias gtp " $RCfile` <= 0) then
@@ -119,6 +121,7 @@ if ( `grep -c "alias gpte " $RCfile` <= 0) then
   echo "Command 'gpte' is now defined."
 else
     echo "gpte command found."
+    grep "alias gpte " $RCfile
 endif
 
 if ( `grep -c "alias gtpe " $RCfile` <= 0) then

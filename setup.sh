@@ -71,7 +71,7 @@ if [ ! -f $RCfile ]; then
     touch $RCfile
 fi
 
-if [[ $(grep -c "OPENAI_API_KEY" $RCfile) -le 0 ]]; then
+if [[ $(grep -c "OPENAI_API_KEY" $RCfile) -gt 0 ]]; then
   echo "OpenAI API key detected: $OPENAI_API_KEY. If you need to change this, edit the OPENAI_API_KEY in $RCfile."
 else
   echo ""
@@ -88,6 +88,9 @@ fi
 if [[ $(grep -c "alias chatgpt=" $RCfile) -le 0 ]]; then
   echo "alias chatgpt='python3 `pwd`/api/chatGPT.py'" >> $RCfile
   echo "Command 'chatgpt' is now defined."
+else
+  echo "chatgpt command found."
+  grep "alias chatgpt=" $RCfile
 fi
 if [[ $(grep -c "alias chatgtp=" $RCfile) -le 0 ]]; then
   echo "alias chatgtp='python3 `pwd`/api/chatGPT.py'" >> $RCfile
@@ -97,7 +100,7 @@ if [[ $(grep -c "alias gpt=" $RCfile) -le 0 ]]; then
   echo "alias gpt='python3 `pwd`/api/gpt_command_prompt.py'" >> $RCfile
   echo "Command 'gpt' is now defined."
 else
-    echo "gpt command found"
+    echo "gpt command found."
     grep "alias gpt=" $RCfile
 fi
 
@@ -109,7 +112,7 @@ if [[ $(grep -c "alias gpte=" $RCfile) -le 0 ]]; then
   echo "alias gpte='python3 `pwd`/api/gpt_command_prompt_edit_loop.py'" >> $RCfile
   echo "Command 'gpte' is now defined."
 else
-    echo "gpte command found"
+    echo "gpte command found."
     grep "alias gpte=" $RCfile
 fi
 
