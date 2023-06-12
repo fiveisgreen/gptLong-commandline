@@ -60,7 +60,7 @@ if ( `grep -q "OPEN_AI_KEY" ~/.cshrc` ) then
 else
   echo ""
   echo "  .-.     .-.     .-.     .-.     .-.     .-.     .-.     .-.     .-.     .-.   "
-  echo ".'   \`._.'   \`._.'   \`._.'   \`._.'   \`._.'   \`._.'   \`._.'   \`._.'   \`._.'   \`. "
+  echo ".'   '._.'   '._.'   '._.'   '._.'   '._.'   '._.'   '._.'   '._.'   '._.'   '. "
   echo ""
   echo "Now your OpenAI key is needed. You can get your key by going to https://platform.openai.com/account/api-keys and hitting ''Create new secret key''"
   echo ""
