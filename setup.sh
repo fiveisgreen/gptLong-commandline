@@ -50,6 +50,10 @@ if [ "$SHELL" = "/bin/sh" ]; then
     RCfile="$HOME/.profile"
 fi
 
+if [ ! -f $RCfile ]; then
+    touch $RCfile
+fi
+
 if [ `grep -q "OPEN_AI_KEY" $RCfile` ]; then
   echo "OpenAI API key detected. If you need to change this, edit the OPENAI_API_KEY in $RCfile."
 else

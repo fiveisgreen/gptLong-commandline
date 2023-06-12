@@ -55,6 +55,10 @@ if ( "$SHELL" == "/bin/tcsh" ) then
     set RCfile = $HOME/.tcshrc
 endif
 
+if (! -e $RCfile) then
+    touch $RCfile
+endif
+
 if ( `grep -q "OPEN_AI_KEY" ~/.cshrc` ) then
   echo "OpenAI API key detected. If you need to change this, edit the OPENAI_API_KEY in $RCfile."
 else
