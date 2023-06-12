@@ -25,11 +25,14 @@ then
             * ) echo "Please answer yes (y/Y) or no (n/N).";;
         esac
     done
+else
+    echo "Updating pip"
+    python3 -m pip install --upgrade pip
 fi
 
 if [ "$continuing" = true ]; then
 
-pip install openai
+pip install --upgrade openai
 
 if ! command -v yarn &> /dev/null 
 then
@@ -38,11 +41,15 @@ then
     then
         echo "nvm not detected, installing it:"
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+    else
+        echo "Updating npm"
+        npm update -g npm
     fi
     echo "Installing yarn"
     npm install --global yarn
 else
-    echo "yarn detected"
+    echo "yarn detected, updating it"
+    npm update -g yarn
 fi
 
 RCfile=$HOME/.bashrc
@@ -98,7 +105,6 @@ source $RCfile
 
 echo "The system variable OPEN_AI_KEY is now"
 echo $OPEN_AI_KEY
-
 
 fi #continuing2
 fi #continuing1

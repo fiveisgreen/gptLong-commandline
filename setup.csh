@@ -32,22 +32,29 @@ if ( `which pip` == "" ) then
                echo "Please answer yes (y/Y) or no (n/N)."; breaksw
         endsw
     end
+else
+    echo "Updating pip"
+    python3 -m pip install --upgrade pip
 endif
 
 if ( "$continuing" == true ) then
 
-pip install openai
+pip install --upgrade openai
 
 if ( `which yarn` == "") then
     echo "yarn not detected, Installing..."
     if ( `which npm` == "") then
         echo "nvm not detected, installing it:"
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | csh
+    else
+        echo "Updating npm"
+        npm update -g npm
     endif
     echo "Installing yarn"
     npm install --global yarn
 else
-    echo "yarn detected"
+    echo "yarn detected, updating it"
+    npm update -g yarn
 endif
 
 set RCfile = $HOME/.cshrc
