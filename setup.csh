@@ -1,15 +1,18 @@
 #!/bin/csh
 
 set continuing = true
-if ( "$SHELL" == "/bin/bash" || "$SHELL" == "/bin/sh" ) then
-    set continuing  = false
-    source setup.sh
-else if ( "$SHELL" != "/bin/csh" && "$SHELL" != "/bin/tcsh" ) then
-    echo "shell `$SHELL` is not supported. Try bash, csh, or tcsh."
-    set continuing = false
-endif
 
-if ( "$continuing" == true ) then
+#if ( "$SHELL" == "/bin/bash" || "$SHELL" == "/bin/sh" ) then
+#    echo "switching" #ggg
+#    set continuing  = false
+#    echo " ..to bash" #ggg
+#    source setup.sh
+#else if ( "$SHELL" != "/bin/csh" && "$SHELL" != "/bin/tcsh" ) then
+#    echo "shell `$SHELL` is not supported. Try bash, csh, or tcsh."
+#    set continuing = false
+#endif
+
+#if ( "$continuing" == "true" ) then
 
 if ( `which python3` == "") then
     while( 1 )
@@ -25,8 +28,9 @@ if ( `which python3` == "") then
         endsw
     end
 endif
+echo "E" #ggg
 
-if ( "$continuing" == true ) then
+if ( "$continuing" == "true" ) then
 
 if ( `which pip` == "" ) then
     while( 1 )
@@ -47,7 +51,7 @@ else
     python3 -m pip install --upgrade pip
 endif
 
-if ( "$continuing" == true ) then
+if ( "$continuing" == "true" ) then
 
 pip install --upgrade openai
 
@@ -76,7 +80,7 @@ if (! -e $RCfile) then
     touch $RCfile
 endif
 
-if ( `grep -q "OPEN_AI_KEY" ~/.cshrc` ) then
+if ( `grep -q "OPENAI_API_KEY" ~/.cshrc` ) then
   echo "OpenAI API key detected. If you need to change this, edit the OPENAI_API_KEY in $RCfile."
 else
   echo ""
@@ -118,9 +122,9 @@ endif
 echo "Reloading shell startup configuration"
 source $RCfile
 
-echo "The system variable OPEN_AI_KEY is now"
-echo $OPEN_AI_KEY
+echo "The system variable OPENAI_API_KEY is now"
+echo $OPENAI_API_KEY
 
 endif #continuing2
 endif #continuing1
-endif #continuing0
+#endif #continuing0

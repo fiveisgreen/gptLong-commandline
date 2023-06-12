@@ -1,17 +1,15 @@
 #!/bin/bash
 
 continuing=true
-#Make sure the shell is set correctly
-if [[ $SHELL = /bin/csh || $SHELL = /bin/tcsh ]]; then
-    continue=false
-    source setup.csh
-elif [[ ! ( $SHELL = /bin/sh || $SHELL = /bin/bash ) ]]; then
-    echo "shell `$SHELL` is not supported. Try bash, csh, or tcsh."
-    continue=false
-fi
+#if [[ $SHELL = /bin/csh || $SHELL = /bin/tcsh ]]; then
+#    continue=false
+#    source setup.csh
+#elif [[ ! ( $SHELL = /bin/sh || $SHELL = /bin/bash ) ]]; then
+#    echo "shell `$SHELL` is not supported. Try bash, csh, or tcsh."
+#    continue=false
+#fi
 
-
-if [ "$continuing" = true ]; then
+#if [ "$continuing" = true ]; then
 
 if ! command -v python3 &> /dev/null
 then
@@ -73,7 +71,7 @@ if [ ! -f $RCfile ]; then
     touch $RCfile
 fi
 
-if [ `grep -q "OPEN_AI_KEY" $RCfile` ]; then
+if [ `grep -q "OPENAI_API_KEY" $RCfile` ]; then
   echo "OpenAI API key detected. If you need to change this, edit the OPENAI_API_KEY in $RCfile."
 else
   echo ""
@@ -115,9 +113,9 @@ fi
 echo "Reloading shell startup configuration"
 source $RCfile
 
-echo "The system variable OPEN_AI_KEY is now"
-echo $OPEN_AI_KEY
+echo "The system variable OPENAI_API_KEY is now"
+echo $OPENAI_API_KEY
 
 fi #continuing2
 fi #continuing1
-fi #continuing0
+#fi #continuing0
