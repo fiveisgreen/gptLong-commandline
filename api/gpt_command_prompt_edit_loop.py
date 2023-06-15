@@ -40,8 +40,8 @@ TODO:
     - [x]     does it fix the chunking problem.
     - [x] make max input tokens a commandline parameter to control the chunk length
     - [x] update the Usage in this file
-    - [ ] update usage Examples in readme
-    - [ ] Test if other models still work
+    - [x] update usage Examples in readme
+    - [x] Test if other models still work
     - [x] input tokens model dependent
     - [x] use gpt-3.5-turbo
     - [x] Make use of openAI's updates to gpt-3.5-turbo-16k
@@ -59,6 +59,8 @@ TODO:
     - [ ] Add parallel processing of chunks, see https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
     - [ ] add chunk limiter to test output. Maybe just a "test" mode
     - [x] Gracefully check that all filex exist before doing anything else.
+    - [ ] Make a compare tool to compare the output of different models
+    - [ ] Migrate these improvements to the gpt command
 """
 
 

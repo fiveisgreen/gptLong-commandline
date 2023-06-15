@@ -64,13 +64,34 @@ The `gpte` is centered around file editing. It takes two prompts: an instruction
 > gpte "my instruction prompt" "my body prompt to edit"
 > gtpe -f bodyFile1 -i instrFile1 instrFile2 [-o outfile]
 
-Important Option Flags:
-* -g --gtp3     switch the model from edit mode (text-davinci-edit-001) with 2 prompts to text-davinci-003 wiht a merged instruction and body.
-* -c --code     switch engine to code mode code-davinci-edit-001 (code-davinci-002 if combined with -g).
-* -e --echo     prints prompt and responce to terminal
-* -v --verbose  turn on verbose printint
+IO Options:
+Directly provide a text string, which becomes the instruction prompt.
+* -i filenames  provide an instruction prompt from file. Can be more than one file. These appends to the commandline instruction string.
+* -f filename   The body prompt from file. 
+* -o filename   The output. If no -o options is give, this writes back to the -f body prompt file.
+
+#### Model Choice Options: 
+* (Default model is gpt-3.5-turbo, aka chatGPT)
+* -16k          Use the new gpt-3.5-turbo-16k model, which has 4x the context length of gpt-3.5-turbo
+* -c --code     Change to a code oriented model code-davinci-002 (code-davinci-edit-001 if combined with -e).
+* -e --edit     Change to the text-editing oriented model text-davinci-edit-001.
+* --old         switch the model from chatGPT (gpt-3.5-turbo) with system and body prompts to a GPT-3 model with a merged instruction and body.
+*    --old = --old 1       text-davinci-003
+*    --old 2    text-davinci-002
+*    --old 3    Curie (text-curie-001)
+*    --old 4    Babbage (text-babbage-001)
+*    --old 5    Ada (text-ada-001)
+Using older models is often great since they're much faster, much cheaper, and often are good enough. 
+
+#### Other Important Option:
+* -h --help     Shows a description of all options.
+* -n MAX\_TOKENS\_IN  Allows you to limit the number of tokens in each chunk of text fed to the model. Use lower values (~300) if the model is truncating the output or if there's an error of exceeding the model's token limit. 
+* --echo        prints prompt and responce to terminal
+* -v --verbose  turn on verbose printing (Coming soon: making this an int verbosity level)
 * -d --disable  disables GTP-3 call for debugging
 * -v --version  print version.
+Coming soon: 
+test mode for trying out a prompt before feeding a large file through a model. 
 
 ## Troubleshooting 
 ### AuthenticaionError
