@@ -51,13 +51,14 @@ TODO:
     - [x] Add time estimate
     - [x] make old integer parameterizable, and able to run ada, babage etc.
     - [ ] Make verbose into verbosity, an int from 0 .. 9
-    - [x] Add price estimate  https://openai.com/pricing
+    - [x] Add price estimate and warnings
     - [ ] Add rate limiter so you don't get rate errors. 
         Overview: https://platform.openai.com/docs/guides/rate-limits/overview
         cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
         avoidance script: https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
     - [ ] Add parallel processing of chunks, see https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
     - [ ] add chunk limiter to test output. Maybe just a "test" mode
+    - [ ] Gracefully check that all filex exist before doing anything else.
 """
 
 
@@ -96,7 +97,7 @@ parser.add_argument('-c', '--code', action='store_true', help='Uses the code-dav
 parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
 
 #parser.add_argument('--old', action='store_true', help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.')
-parser.add_argument('--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
+parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
 parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
 parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
 #The point here is to make sure chatGPT doesn't runaway. But this is really dumb since it's most likely to produce unwanted truncation. 
@@ -150,19 +151,21 @@ if args.gpt_3point5_turbo_16k:
     price_out = 0.004 #$/1000 tokens
 elif args.code and args.edit:
     Model = "code-davinci-edit-001"
-    maxInputTokens = 4097 #pure guess. Might be 2049
+    maxInputTokens = 3000 #4097 #pure guess. Might be 2049
     use_chatGPT = False
     price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+    print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     price_out = price_in 
 elif args.code:
     Model = "code-davinci-002"
     maxInputTokens = 8001 #https://platform.openai.com/docs/models/gpt-3-5
     use_chatGPT = False
     price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+    print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     price_out = price_in 
 elif args.edit:
     Model = "text-davinci-edit-001"
-    maxInputTokens = 4097 #pure guess. Might be 2049
+    maxInputTokens = 3000 #pure guess. Might be 2049
     use_chatGPT = False
     price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
     price_out = price_in 
@@ -172,10 +175,12 @@ elif args.old > 0: #elif args.old:
         Model = "text-davinci-003" #Best quality, longer output, and better consistent instruction-following than these other old models.
         maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
         price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+        print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     elif args.old == 2:
         Model = "text-davinci-002" #Similar capabilities to text-davinci-003 but trained with supervised fine-tuning instead of reinforcement learning
         maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
         price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+        print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     elif args.old == 3: #CURIE Very capable, but faster and lower cost than Davinci.
         Model = "text-curie-001" 
         maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
@@ -193,7 +198,35 @@ elif args.old > 0: #elif args.old:
     if args.frequency_penalty or args.presence_penalty:
         print("Note that with --old, the presence_penalty or frequency_penalty option do nothing")
 
+#Convert from price per 1000 tokens to price per token 
+price_out /= 1000 
+price_in  /= 1000
+
+#Instruction Prompt
+if args.instruction_files: 
+    for fname in args.instruction_files:
+        if Instruction == "":
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
+                Instruction = fin.read()
+        else: 
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
+                Instruction += '\n' + fin.read() 
+if args.prompt_inst:
+    if Instruction == "":
+        Instruction += '\n' + args.prompt_inst
+    else:
+        Instruction = args.prompt_inst
+if Instruction == "":
+    print("Instruction prompt is required, none was given. Exiting.")
+    sys.exit()
+len_Instruction__tokens = token_cut_light.nchars_to_ntokens_approx(len(Instruction) ) 
+
+if len_Instruction__tokens > 0.8*maxInputTokens:
+    print(f"Error: Instructions are too long ({len_Instruction__tokens } tokens, while the model's input token maximum is {maxInputTokens} for both instructions and prompt.")
+    sys.exit()
+
 #make a safety margin on the input tokens
+maxInputTokens -= len_Instruction__tokens 
 if args.max_tokens_in:
     maxInputTokens = min(maxInputTokens, max(args.max_tokens_in, 25))
 else:
@@ -226,24 +259,6 @@ if args.prompt_body:
         Prompt = args.prompt_body
 if Prompt == "":
     print("Body prompt is required, none was given. Exiting.")
-    sys.exit()
-
-#Instruction Prompt
-if args.instruction_files: 
-    for fname in args.instruction_files:
-        if Instruction == "":
-            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
-                Instruction = fin.read()
-        else: 
-            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
-                Instruction += '\n' + fin.read() 
-if args.prompt_inst:
-    if Instruction == "":
-        Instruction += '\n' + args.prompt_inst
-    else:
-        Instruction = args.prompt_inst
-if Instruction == "":
-    print("Instruction prompt is required, none was given. Exiting.")
     sys.exit()
 
 #Set maxOutputTokens, 
@@ -349,20 +364,28 @@ def rechunk(text, len_text, chunk_start, chunk_end): #TO_TEST
 with open(prompt_fname,'w') as fp:
     fp.write(Prompt)    
 
+len_prompt__char = len(Prompt)
+len_prompt__tokens_est = token_cut_light.nchars_to_ntokens_approx(len_prompt__char)
+n_chunk_est = ceil(len_prompt__tokens_est/maxInputTokens)
+est_cost__USD = price_in*(len_Instruction__tokens  + len_prompt__tokens_est) + price_out*len_prompt__tokens_est
+    
+if args.verbose:
+    print(f"length of prompt body {len_prompt__char} characters, est. {len_prompt__tokens_est} tokens") 
+    print(f"Estimating this will be {n_chunk_est} chunks")
+if args.verbose or est_cost__USD > 0.1:
+    print(f"Estimated cost of this action: ${est_cost__USD:.2f}")
+if est_cost__USD > 0.5:
+    answer = input("Would you like to continue? (y/n): ")
+    if not (answer.lower() == 'y' or answer.lower == 'yes'):
+        print("Disabling OpenAI API calls")
+        args.disable = True
+
 #Main 
 #def run_loop( in_file_name, out_file_name, gtp_instructions,  maxInputTokens = 4095):
 with open(args.out,'w') as fout:
             if not args.disable:
                 openai.api_key = os.getenv("OPENAI_API_KEY")
-            len_prompt__char = len(Prompt)
-            len_prompt__tokens_est = token_cut_light.nchars_to_ntokens_approx(len_prompt__char)
-            n_chunk_est = ceil(len_prompt__tokens_est/maxInputTokens)
-            est_cost__USD = price_in*(token_cut_light.nchars_to_ntokens_approx(len(Instruction) ) + len_prompt__tokens_est) + price_out*len_prompt__tokens_est
-    
-            if args.verbose:
-                print(f"length of prompt body {len_prompt__char} characters, est. {len_prompt__tokens_est} tokens") 
-                print(f"Estimating this will be {n_chunk_est} chunks")
-                print(f"Estimated cost: ${est_cost__USD}")
+            
             chunk_start = 0
             i_chunk = 0
             expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt__char, maxInputTokens )
@@ -513,11 +536,11 @@ with open(args.out,'w') as fout:
                         break
 
                 if args.echo or args.verbose:
-                    total_run_time_so_far: time.time() - t_start0
-                    total_expected_run_time: total_run_time_so_far/frac_done 
-                    ETA = total_expected_run_time - total_run_time_so_far
+                    total_run_time_so_far = time.time() - t_start0
+                    total_expected_run_time = total_run_time_so_far/frac_done 
+                    completion_ETA = total_expected_run_time - total_run_time_so_far
                     print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
-                    suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(ETA)}\n" 
+                    suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
 
                     print(altchunk + suffix)
 
