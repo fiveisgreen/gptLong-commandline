@@ -496,7 +496,7 @@ with open(args.out,'w') as fout:
                                     frequency_penalty=Frequency_penalty,
                                     presence_penalty=Presence_penalty
                                     ).choices[0].message.content """
-                    elif args.old == 1:
+                    elif args.old >= 1 or (args.code and not args.edit):
                         if args.max_tokens_out:
                             result = openai.Completion.create(
                                     model=Model,
