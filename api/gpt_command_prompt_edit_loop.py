@@ -552,7 +552,7 @@ with open(args.out,'w') as fout:
                     altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
                 if ntokens_in > 0:
                     prop = abs(ntokens_in-ntokens_out)/ntokens_in
-                    if prop < 0.8:
+                    if prop < 0.6:
                         print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
                     elif prop > 1.5:
                         print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
