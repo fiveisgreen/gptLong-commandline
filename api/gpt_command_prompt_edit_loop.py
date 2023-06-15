@@ -96,7 +96,7 @@ parser.add_argument('-c', '--code', action='store_true', help='Uses the code-dav
 parser.add_argument('--old', type=int, help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.', default = 0)
 #parser.add_argument('--old', action='store_true', help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.')
 parser.add_argument('--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
-parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90% of the model's limit") 
+parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
 parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
 #The point here is to make sure chatGPT doesn't runaway. But this is really dumb since it's most likely to produce unwanted truncation. 
 parser.add_argument("--top_p", type=float, help="top_p parameter. Controls diversity via nucleus sampling. 0.5 means half of all likelihood-weighted options are considered. Clamped to [0,1]", default = 1.0) 
