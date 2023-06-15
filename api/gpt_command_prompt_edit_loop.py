@@ -18,12 +18,35 @@ $ gtpe -f body_file1 -i instr_file1 instr_file2 [-o outfile]
 ####### FUll Usage #######
 $ gtpe ["instructions"] ["body epilog"] [-f body.txt] [-i instruction1.txt instrcution2.txt] [-o outfile.txt] [params] [flags]
 
+
+positional arguments:
+  prompt_inst           Instruction prompt string. If both this and -i files are give, this goes after the file contents.
+  prompt_body           Body prompt string. If both this and -f files are give, this goes after the file contents.
+
+IO:
+#   Just supply a text string and it becomes appended to the front of the instruction prompt 
+#  -i INSTRUCTION_FILES [INSTRUCTION_FILES ...]
+                        Prompt files, to be used for edit instructions.
+#  -f FILES, --files FILES
+                        Prompt file of body text to be edited.
+#  -o OUT                Responce output file
+
+Model Selectors:
+#  -16k, --16k           Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code,
+                        -e/--edit, and --old
+#  -e, --edit            Uses the text-davinci-edit-001 model, which is older but oriented around text editing
+#  -c, --code            Uses the code-davinci-002 model to optomize code quality, and uses merged instruction and body and double the
+                        max input tokens. If combined with -e, uses code-davinci-edit-001.
+#  --old [OLD]           Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003;
+                        2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada}
+
 Flags:
+#  -h, --help   show all options and exit
 # -e --edit     switch engine to an edit oriented model
 # -c --code     switch engine to code mode
 # --old         switch engine from edit mode to merged prompt mode with instruction prolog.
 # --echo     prints prompt and responce to terminal
-# -v --verbose  turn on verbose printint
+# --verbose  turn on verbose printint
 # -d --disable  disables GTP-3 call for debugging
 # -v --version  print version.
 
