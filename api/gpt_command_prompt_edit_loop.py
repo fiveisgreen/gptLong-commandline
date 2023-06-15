@@ -80,7 +80,7 @@ parser.add_argument("-p", dest="presence_penalty", type=float, help="presence_pe
 parser.add_argument('--echo', action='store_true', help='Print Prompt as well as responce')
 parser.add_argument('--verbose', action='store_true', help='Spew everything')
 parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
-parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.2.0') 
+parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.3.0') 
 
 #best of parameter, an int.
 args = parser.parse_args() 
