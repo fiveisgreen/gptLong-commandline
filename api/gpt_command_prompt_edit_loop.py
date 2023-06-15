@@ -49,9 +49,9 @@ TODO:
     - [ ]     Add library install to the setup script
     - [ ] Make the guts of this a function. 
     - [x] Add time estimate
-    - [ ] make old integer parameterizable, and able to run ada, babage etc.
+    - [x] make old integer parameterizable, and able to run ada, babage etc.
     - [ ] Make verbose into verbosity, an int from 0 .. 9
-    - [ ] Add price estimate  https://openai.com/pricing
+    - [x] Add price estimate  https://openai.com/pricing
     - [ ] Add rate limiter so you don't get rate errors. 
         Overview: https://platform.openai.com/docs/guides/rate-limits/overview
         cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
@@ -91,9 +91,10 @@ parser.add_argument("-f","--files", help="Prompt file of body text to be edited.
 parser.add_argument("-i", dest="instruction_files", nargs='+', help="Prompt files, to be used for edit instructions.") 
 parser.add_argument("-o", dest="out", help="Responce output file", default = "gptoutput.txt")  
 
-parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around  text editing')
-parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. If combined with --old, uses code-davinci-002 with merged instruction and body and double the max input tokens')
-parser.add_argument('--old', type=int, help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.', default = 0)
+parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around text editing')
+parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-002 model to optomize code quality, and uses merged instruction and body and double the max input tokens. If combined with -e, uses code-davinci-edit-001.')
+parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
+
 #parser.add_argument('--old', action='store_true', help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.')
 parser.add_argument('--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
 parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
@@ -130,6 +131,7 @@ Presence_penalty = clamp(args.presence_penalty ,0.0,2.0) #0
 ######### Input Ingestion ##############
 if args.old == None:
     args.old = 1
+    print("This should never run. Go fix args.old")
 
 #Set Model
 #Model = "gpt-3.5-turbo"
@@ -140,40 +142,56 @@ price_in = 0.0015 #$/1000 tokens see https://openai.com/pricing
 price_out = 0.002 #$/1000 tokens
 if args.gpt_3point5_turbo_16k:
     Model = "gpt-3.5-turbo-16k" 
-    maxInputTokens = 16384 #guessed based on "16k". This may actually be 16000 or something else.
+    maxInputTokens = 16000 #may be 16384. the webpage only says "16k". 
     use_chatGPT = True
     if args.old > 0 or args.code or args.edit: #if args.old or args.code or args.edit:
         print("Note that the --16k flag cannot be combined with -c/--code, -e/--edit, or --old, and the latter will be ignored.")
     price_in = 0.003 #$/1000 tokens
     price_out = 0.004 #$/1000 tokens
+elif args.code and args.edit:
+    Model = "code-davinci-edit-001"
+    maxInputTokens = 4097 #pure guess. Might be 2049
+    use_chatGPT = False
+    price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+    price_out = price_in 
+elif args.code:
+    Model = "code-davinci-002"
+    maxInputTokens = 8001 #https://platform.openai.com/docs/models/gpt-3-5
+    use_chatGPT = False
+    price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+    price_out = price_in 
+elif args.edit:
+    Model = "text-davinci-edit-001"
+    maxInputTokens = 4097 #pure guess. Might be 2049
+    use_chatGPT = False
+    price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+    price_out = price_in 
 elif args.old > 0: #elif args.old:
-    if args.code:
-        Model = "code-davinci-002"
-        maxInputTokens = 8001 #https://platform.openai.com/docs/models/gpt-3-5
-        use_chatGPT = False
-        price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
-        price_out = price_in 
-    else:
-        Model = "text-davinci-003" #note, in terms of API compatability, here you can drop-in text-davinci-003, text-davinci-002, text-curie-001, text-babbage-001, text-ada-001
+    #note, in terms of API compatability, here you can drop-in text-davinci-003, text-davinci-002, text-curie-001, text-babbage-001, text-ada-001
+    if args.old == 1: #G
+        Model = "text-davinci-003" #Best quality, longer output, and better consistent instruction-following than these other old models.
         maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
-        use_chatGPT = False
         price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
-        price_out = price_in 
+    elif args.old == 2:
+        Model = "text-davinci-002" #Similar capabilities to text-davinci-003 but trained with supervised fine-tuning instead of reinforcement learning
+        maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
+        price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
+    elif args.old == 3: #CURIE Very capable, but faster and lower cost than Davinci.
+        Model = "text-curie-001" 
+        maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
+        price_in = 0.0020 #$/1000 tokens see https://openai.com/pricing 
+    elif args.old == 4: #BABBAGE Capable of straightforward tasks, very fast, and lower cost.
+        Model = "text-babbage-001" 
+        maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
+        price_in = 0.0005 #$/1000 tokens see https://openai.com/pricing 
+    elif args.old >= 5: #ADA: Capable of very simple tasks, usually the fastest model in the GPT-3 series, and lowest cost.
+        Model = "text-ada-001"
+        maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
+        price_in = 0.0004 #$/1000 tokens see https://openai.com/pricing 
+    use_chatGPT = False
+    price_out = price_in 
     if args.frequency_penalty or args.presence_penalty:
         print("Note that with --old, the presence_penalty or frequency_penalty option do nothing")
-elif args.code:
-        Model = "code-davinci-edit-001"
-        maxInputTokens = 4097 #pure guess. Might be 2049
-        use_chatGPT = False
-        price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
-        price_out = price_in 
-elif args.edit:
-        Model = "text-davinci-edit-001"
-        maxInputTokens = 4097 #pure guess. Might be 2049
-        use_chatGPT = False
-        price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
-        price_out = price_in 
-
 
 #make a safety margin on the input tokens
 if args.max_tokens_in:
@@ -182,20 +200,7 @@ else:
     maxInputTokens = int(inputToken_safety_margin * maxInputTokens )
 
 backup_gtp_file = "gtpoutput_backup.txt" 
-#Body Prompt
-"""if args.files:  #for multiple files -- more trouble than it's worth.
-    for fname in args.files:
-        if Prompt == "":
-            with open(fname, 'r', encoding=Encoding) as fin:
-                Prompt = fin.read() 
-        else: 
-            with open(fname, 'r', encoding=Encoding) as fin:
-                Prompt += '\n' + fin.read() 
-    if len(args.files) > 0: 
-        prefix, extension = parse_fname(args.files[0])
-        args.out = prefix+"__gtpMeld"+extension 
-        backup_gtp_file = prefix+"__gtpRaw"+extension 
-        prompt_fname = prefix+"__prmoptRaw"+extension """
+
 output_file_set = False
 if args.out:
     output_file_set = True
@@ -253,13 +258,6 @@ if args.max_tokens_out:
     if maxOutputTokens < maxInputTokens*outputToken_safety_margin:
         print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens*outputToken_safety_margin} to prevent periodic truncations in the output.")
         maxOutputTokens = max(maxOutputTokens, maxInputTokens*outputToken_safety_margin)
-        
-if args.verbose:
-    print("Model: ",Model)
-    print("max_tokens_in: ",maxInputTokens )
-    print("max_tokens_out: ",maxOutputTokens )
-    print("Top_p",Top_p)
-    print("Temp",Temp)
 
 def get_front_white_idx(text): #tested
     #ret int indx of front white space
@@ -287,6 +285,13 @@ def humanize_seconds(sec):
     else:
         return f"{sec/31556736:.1f} years"
     
+if args.verbose:
+    print("Model: ",Model)
+    print("max_tokens_in: ",maxInputTokens )
+    print("max_tokens_out: ",maxOutputTokens )
+    print("Top_p",Top_p)
+    print("Temp",Temp)
+
 def get_back_white_idx(text, char_strt=0): #tested
     #ret int indx of back white space, starting from char 
     l=len(text)
@@ -352,9 +357,12 @@ with open(args.out,'w') as fout:
             len_prompt__char = len(Prompt)
             len_prompt__tokens_est = token_cut_light.nchars_to_ntokens_approx(len_prompt__char)
             n_chunk_est = ceil(len_prompt__tokens_est/maxInputTokens)
+            est_cost__USD = price_in*(token_cut_light.nchars_to_ntokens_approx(len(Instruction) ) + len_prompt__tokens_est) + price_out*len_prompt__tokens_est
+    
             if args.verbose:
                 print(f"length of prompt body {len_prompt__char} characters, est. {len_prompt__tokens_est} tokens") 
                 print(f"Estimating this will be {n_chunk_est} chunks")
+                print(f"Estimated cost: ${est_cost__USD}")
             chunk_start = 0
             i_chunk = 0
             expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt__char, maxInputTokens )
@@ -434,7 +442,7 @@ with open(args.out,'w') as fout:
                                     frequency_penalty=Frequency_penalty,
                                     presence_penalty=Presence_penalty
                                     ).choices[0].message.content """
-                    elif args.gpt3:
+                    elif args.old == 1:
                         if args.max_tokens_out:
                             result = openai.Completion.create(
                                     model=Model,

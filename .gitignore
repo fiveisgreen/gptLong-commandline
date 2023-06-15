@@ -33,3 +33,4 @@ api/reject
 tests/htmltable__gtpRaw.txt
 tests/htmltable__prmoptRaw.txt
 tests/out.txt
+.mod.swp
