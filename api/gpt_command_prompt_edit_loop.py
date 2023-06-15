@@ -58,7 +58,7 @@ TODO:
         avoidance script: https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
     - [ ] Add parallel processing of chunks, see https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
     - [ ] add chunk limiter to test output. Maybe just a "test" mode
-    - [ ] Gracefully check that all filex exist before doing anything else.
+    - [x] Gracefully check that all filex exist before doing anything else.
 """
 
 
@@ -205,6 +205,9 @@ price_in  /= 1000
 #Instruction Prompt
 if args.instruction_files: 
     for fname in args.instruction_files:
+        if not os.path.exists(fname):
+            print("Error: instruction file not found ",fname)
+            sys.exit()
         if Instruction == "":
             with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
                 Instruction = fin.read()
@@ -239,6 +242,9 @@ if args.out:
     output_file_set = True
 
 if args.files: 
+        if not os.path.exists(args.files):
+            print("Error: prompt file not found ",args.files)
+            sys.exit()
         if Prompt == "":
             with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
                 Prompt = fin.read() 
