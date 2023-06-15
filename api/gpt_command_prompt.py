@@ -10,14 +10,15 @@ from gpt import GPT
 #gpt -f file1 file2
 
 #TODO: 
-#-[ ] get rid of the GPT library... what's it even for?  Clear out all the junk from the fork
-#-[ ] make token max proportional to which model is used 
-#-[ ] Automate expansion of word count
-#-[ ] enable example file
-#-[x] make a sensible integration of chatGPT into the command system
-#-[ ] integrate conversation into the chatGPT option
-#-[ ] integrate older models since they have much higher token rate limits.
-#-[ ] check that max tokens isn't 
+#- [ ] get rid of the GPT library... what's it even for?  Clear out all the junk from the fork
+#- [ ] make token max proportional to which model is used 
+#- [ ] Automate expansion of word count
+#- [ ] enable example file
+#- [x] make a sensible integration of chatGPT into the command system
+#- [ ] integrate conversation into the chatGPT option
+#- [ ] integrate older models since they have much higher token rate limits.
+#- [ ] check that max tokens isn't 
+#- [ ] make use of maxInputTokens to prevent crashes from exceeding the token limit
 
 #todo: make a conversation system -- finally, a use for standrd io
 #automated conversatoin mode
@@ -53,7 +54,7 @@ def clamp(num, minval,maxval):
 
 #Model parameter prototypes: 
 Prompt = ""
-Max_Tokens = -1
+Max_Tokens = -1 #a meaningless placeholder overwritten by the argparse default
 Top_p= clamp(args.top_p ,0.0,1.0) #1.0
 Temp = clamp(args.temp ,0.0,1.0) #0
 Frequency_penalty = clamp(args.frequency_penalty ,0.0,2.0) #0
