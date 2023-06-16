@@ -3,7 +3,7 @@ import json
 import openai
 import argparse
 import token_cut_light
-from gpt import GPT
+#from gpt import GPT
 from math import ceil
 import time
 
@@ -35,8 +35,8 @@ Model Selectors:
 #  -16k, --16k           Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code,
                         -e/--edit, and --old
 #  -e, --edit            Uses the text-davinci-edit-001 model, which is older but oriented around text editing
-#  -c, --code            Uses the code-davinci-002 model to optomize code quality, and uses merged instruction and body and double the
-                        max input tokens. If combined with -e, uses code-davinci-edit-001.
+#  -c, --code            Uses the code-davinci-edit-001. (code-davinci-002 is no longer offered)
+                        max input tokens. If combined with -e, uses 
 #  --old [OLD]           Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003;
                         2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada}
 
@@ -118,10 +118,8 @@ parser.add_argument("-i", dest="instruction_files", nargs='+', help="Prompt file
 parser.add_argument("-o", dest="out", help="Responce output file", default = "gptoutput.txt")  
 
 parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around text editing')
-parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-002 model to optomize code quality, and uses merged instruction and body and double the max input tokens. If combined with -e, uses code-davinci-edit-001.')
+parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. (code-davinci-002 is no longer offered).')
 parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
-
-#parser.add_argument('--old', action='store_true', help='Use GTP-3 (text-davinci-003 / code-davinci-002) with merged instructions and prompt. Can be combined with the -c/--code flag.')
 parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
 parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
 parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
@@ -174,20 +172,20 @@ if args.gpt_3point5_turbo_16k:
         print("Note that the --16k flag cannot be combined with -c/--code, -e/--edit, or --old, and the latter will be ignored.")
     price_in = 0.003 #$/1000 tokens
     price_out = 0.004 #$/1000 tokens
-elif args.code and args.edit:
+elif args.code:
     Model = "code-davinci-edit-001"
     maxInputTokens = 3000 #4097 #pure guess. Might be 2049
     use_chatGPT = False
     price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
     print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     price_out = price_in 
-elif args.code:
-    Model = "code-davinci-002"
+"""elif args.code:
+    Model = "code-davinci-002" #model is no longer offered.
     maxInputTokens = 8001 #https://platform.openai.com/docs/models/gpt-3-5
     use_chatGPT = False
     price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
     print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
-    price_out = price_in 
+    price_out = price_in """
 elif args.edit:
     Model = "text-davinci-edit-001"
     maxInputTokens = 3000 #pure guess. Might be 2049
@@ -496,7 +494,7 @@ with open(args.out,'w') as fout:
                                     frequency_penalty=Frequency_penalty,
                                     presence_penalty=Presence_penalty
                                     ).choices[0].message.content """
-                    elif args.old >= 1 or (args.code and not args.edit):
+                    elif args.old >= 1:
                         if args.max_tokens_out:
                             result = openai.Completion.create(
                                     model=Model,

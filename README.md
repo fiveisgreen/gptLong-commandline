@@ -73,7 +73,7 @@ Directly provide a text string, which becomes the instruction prompt.
 #### Model Choice Options: 
 * (Default model is gpt-3.5-turbo, aka chatGPT)
 * -16k          Use the new gpt-3.5-turbo-16k model, which has 4x the context length of gpt-3.5-turbo
-* -c --code     Change to a code oriented model code-davinci-002 (code-davinci-edit-001 if combined with -e).
+* -c --code     Change to a code oriented model code-davinci-edit-001
 * -e --edit     Change to the text-editing oriented model text-davinci-edit-001.
 * --old         switch the model from chatGPT (gpt-3.5-turbo) with system and body prompts to a GPT-3 model with a merged instruction and body.
 *    --old = --old 1       text-davinci-003

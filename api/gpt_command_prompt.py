@@ -39,7 +39,7 @@ parser.add_argument('--old', action='store_true', help='Use GPT-3 instead of GPT
 parser.add_argument('--verbose', action='store_true', help='Spew everything')
 parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
 
-parser.add_argument('-c', '--code', action='store_true', help='Uses the code_davinci_002 model to optomize code quality')
+#parser.add_argument('-c', '--code', action='store_true', help='Uses the code_davinci_002 model to optomize code quality')
 parser.add_argument("--top_p", type=float, help="top_p parameter. Controls diversity via nucleus sampling. 0.5 means half of all likelihood-weighted options are considered. Clamped to [0,1]", default = 1.0) 
 parser.add_argument("--temp", type=float, help="temperature parameter. Controls randomness. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Clamped to [0,1]", default = 0) 
 parser.add_argument("-q", dest="frequency_penalty", type=float, help="frequency_penalty parameter. How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model's likelihood of repeating the same line verbatim. Clamped to [0,2]", default = 0) 
@@ -74,10 +74,10 @@ if args.old:
     Model = "gpt-3.5-turbo"
     use_chatGPT  = False
     model_token_max = 4097 #yeah, weird, but that's what they say
-elif args.code:
-    Model = "code-davinci-002"
-    use_chatGPT  = False
-    model_token_max = 8001 
+#elif args.code:
+#    Model = "code-davinci-002" #model is no longer in the openAI api
+#    use_chatGPT  = False
+#    model_token_max = 8001 
 
 if args.prompt:
     Prompt = args.prompt
