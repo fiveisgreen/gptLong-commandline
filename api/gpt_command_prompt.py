@@ -2,7 +2,7 @@ import os, sys
 import json
 import openai
 import argparse
-from gpt import GPT
+#from gpt import GPT
 #from gpt import Example
 
 #example: 

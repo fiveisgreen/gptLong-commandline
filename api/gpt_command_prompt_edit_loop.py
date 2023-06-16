@@ -179,13 +179,6 @@ elif args.code:
     price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
     print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     price_out = price_in 
-"""elif args.code:
-    Model = "code-davinci-002" #model is no longer offered.
-    maxInputTokens = 8001 #https://platform.openai.com/docs/models/gpt-3-5
-    use_chatGPT = False
-    price_in = 0.02 #$/1000 tokens see https://openai.com/pricing 
-    print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
-    price_out = price_in """
 elif args.edit:
     Model = "text-davinci-edit-001"
     maxInputTokens = 3000 #pure guess. Might be 2049
