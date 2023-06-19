@@ -11,7 +11,7 @@ Model = "text-davinci-003" #GPT-3
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY 
-print("Loaded OPENAI_API_KEY", OPENAI_API_KEY)
+print(f"Loaded OPENAI_API_KEY {OPENAI_API_KEY[:6]}..{OPENAI_API_KEY[-6:]}")
 
 Prompt = "What is the capital of Africa?"
 print("Prompt", Prompt)
