@@ -105,7 +105,7 @@ Encoding = "utf8" #
 #Encoding = "cp500" #Western Europe
 PYTHONUTF8=1 #Put Python in UTF-8 mode, good for WSL and windows operations https://docs.python.org/3/using/windows.html#utf-8-mode
 
-prompt_fname = "raw_prompt.txt" #default. #copy prompt body to this file, which will be used for meld.
+prompt_fname = "raw_prompt.txt" #default. #copy of the full prompt body to this file, which will be used for meld.
 inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
 #This may be able to go higher. 
 outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit. 
@@ -177,7 +177,7 @@ verbosity = args.verbose
 is_test_mode = (args.test >= 0)
 if is_test_mode and verbosity <= Verb.notSet:
     verbosity = Verb.test
-if verbosity = Verb.notSet:
+if verbosity == Verb.notSet:
     verbosity = Verb.normal
 
 #Verbosity guide: 
@@ -251,13 +251,13 @@ class Model_Controler:
         maxOutputTokens_default = 20000 #default output limit to prevent run-away
         maxOutputTokens = maxOutputTokens_default #default output limit to prevent run-away
         if user_advised_max_tokens_out__bool:
-            if verbosity > verb.birthDeathMarriage:
+            if verbosity > Verb.birthDeathMarriage:
                 print("Warning: max_tokens_out is set. Are you sure you want to do that? This doesn't help with anything known but can cause gaps in the output") 
     
             maxOutputTokens = abs(user_advised_max_tokens_out__int)
-            if args.max_tokens_out < 0 and verbosity > verb.birthDeathMarriage:
+            if args.max_tokens_out < 0 and verbosity > Verb.birthDeathMarriage:
                 print(f"Negative max_tokens_out feature is obsolte.") 
-            if maxOutputTokens < self.maxInputTokens*outputToken_safety_margin and verbosity > verb.birthDeathMarriage:
+            if maxOutputTokens < self.maxInputTokens*outputToken_safety_margin and verbosity > Verb.birthDeathMarriage:
                 print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens*outputToken_safety_margin} to prevent periodic truncations in the output.") 
                 maxOutputTokens = max(maxOutputTokens, self.maxInputTokens*outputToken_safety_margin)
         self.maxOutputTokens = maxOutputTokens
@@ -604,7 +604,7 @@ est_cost__USD = MC.Get_PriceEstimate(len_prompt__tokens_est)
 expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt__char, MC.maxInputTokens )
     
 #if args.verbose: #TODO make this a class member
-if verbosity >= Verb.normal
+if verbosity >= Verb.normal:
     print("Model: ",MC.Model)
     print("max_tokens_in: ",MC.maxInputTokens )
     print("max_tokens_out: ",MC.maxOutputTokens )
@@ -616,7 +616,7 @@ if verbosity >= Verb.normal
 #Cost estimate dialogue
 if verbosity >= Verb.normal or est_cost__USD > 0.1:
     print(f"Estimated cost of this action: ${est_cost__USD:.2f}")
-    if est_cost__USD > 0.5 and verbosity != verb.silent:
+    if est_cost__USD > 0.5 and verbosity != Verb.silent:
         answer = input("Would you like to continue? (y/n): ")
         if not (answer.lower() == 'y' or answer.lower == 'yes'):
             print("Disabling OpenAI API calls")
@@ -646,12 +646,12 @@ with open(args.out,'w') as fout:
                 chunk_length__tokens_est = token_cut_light.nchars_to_ntokens_approx(chunk_length__char )
                 chunk = Prompt[chunk_start : chunk_end]
                 frac_done = chunk_end/len_prompt__char
-                if verbosity >= verb.normal:
+                if verbosity >= Verb.normal:
                     print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
-                if args.echo:
+                if args.echo or verbosity >= Verb.hyperbarf:
                     print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
                     print(chunk)
-                if verbosity >= verb.normal:
+                if verbosity >= Verb.normal:
                     print(f"{100*chunk_start/len_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
                 chunk_start = chunk_end
 
@@ -670,15 +670,19 @@ with open(args.out,'w') as fout:
 
                     altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
 
-                if verbosity >= verb.debug: 
+                if is_test_mode and i_chunk >= args.test -1:
+                    altchunk += "\n Output terminated by test option"
+                    if verbosity > Verb.silent:
+                        print("\n Output terminated by test option")
+
+                if verbosity >= Verb.debug: 
                     altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
                 if ntokens_in > 0 and verbosity != Verb.silent:
                     prop = abs(ntokens_in-ntokens_out)/ntokens_in
-                    if verbosity > Verb.birthDeathMarriage:
-                        if prop < 0.6:
-                            print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
-                        elif prop > 1.5:
-                            print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
+                    if prop < 0.6:
+                        print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
+                    elif prop > 1.5:
+                        print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
 
                 fout.write(altchunk)
 
@@ -695,8 +699,10 @@ with open(args.out,'w') as fout:
                 suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
                 if verbosity >= Verb.normal:
                     print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
-                if args.echo:
+                if args.echo or verbosity >= Verb.hyperbarf:
                     print(altchunk + suffix)
+                if is_test_mode and i_chunk >= args.test -1 and verbosity > Verb.silent:
+                    print("\n Output terminated by test option")
 
 def DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, verbosity):
     #body input is already copied to prompt_fname
@@ -716,29 +722,29 @@ def DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, v
             print("vimdiff not found, resorting to diff :-/ ")
             os.system("diff " + prompt_fname +" "+args.out+" &")
             """
-    if verbose > Verb.birthDeathMarriage:
+    if verbosity > Verb.birthDeathMarriage:
         print(f"vimdiff {prompt_fname} {args.out}")
         print("If you have a meld alias setup:")
         print(f"meld {prompt_fname} {args.out} &")
 DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, verbosity)
 
-def MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file, verbosity):
+def MakeOkRejectFiles(out_file, prompt_files,output_file_set,prompt_fname,backup_gtp_file, verbosity, is_test_mode):
     ok_file = "ok"
     reject_file = "reject"
     with open(ok_file,'w') as fs:
-        if not output_file_set:
-            fs.write("mv " + args.out + " " +  args.files + '\n' )
-        fs.write("rm " + prompt_fname + '\n')
-        fs.write("rm " + backup_gtp_file + '\n' )
-        fs.write("rm reject\n")
-        fs.write("rm ok\n")
+        if not output_file_set and not is_test_mode:
+            fs.write(f"mv {out_file} {prompt_files}\n" ) #bug? what's up here?
+        fs.write(f"rm {prompt_fname}\n") #the backup copy of the complete prompt
+        fs.write(f"rm {backup_gtp_file}\n")
+        fs.write(f"rm {reject_file}\n")
+        fs.write(f"rm {ok_file}\n")
     
     with open(reject_file,'w') as fs:
-        fs.write("rm " + prompt_fname + '\n')
-        fs.write("rm " + args.out + '\n' )
-        fs.write("rm " + backup_gtp_file + '\n')
-        fs.write("rm ok\n")
-        fs.write("rm reject\n")
+        fs.write(f"rm {prompt_fname}\n")
+        fs.write(f"rm {out_file}\n" )
+        fs.write(f"rm {backup_gtp_file}\n")
+        fs.write(f"rm {ok_file}\n")
+        fs.write(f"rm {reject_file}\n")
 
     if verbosity > Verb.birthDeathMarriage:
         if args.files: 
@@ -749,4 +755,4 @@ def MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file, verbosi
         else:
             print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files.")
         print("or reject changes with $ sc {reject_file}")
-MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file, verbosity)
+MakeOkRejectFiles(args.out, args.files, output_file_set, prompt_fname,backup_gtp_file, verbosity, is_test_mode)
