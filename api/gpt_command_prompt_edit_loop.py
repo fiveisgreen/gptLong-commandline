@@ -5,7 +5,7 @@ import argparse
 import token_cut_light
 #from gpt import GPT
 import time
-from enum import Flag,auto
+from enum import Flag,auto, IntEnum
 
 """ #################### USAGE AND EXAMPLES ###########################
 
@@ -46,7 +46,7 @@ Flags:
 # -c --code     switch engine to code mode
 # --old         switch engine from edit mode to merged prompt mode with instruction prolog.
 # --echo     prints prompt and responce to terminal
-# --verbose  turn on verbose printint
+# --verbose [verbosity] How verbose to print
 # -d --disable  disables GTP-3 call for debugging
 # -v --version  print version.
 
@@ -70,23 +70,25 @@ TODO:
     - [x] Make use of openAI's updates to gpt-3.5-turbo-16k
     - [ ] Colorize verbose output
     - [ ]     Add library install to the setup script
+    - [x] Refactor to make verbose into verbosity, an int from 0 .. 9
+    - [x] Refactor into classes and functions
+    - [ ] Migrate these improvements to the gpt command
     - [ ] Refactor to make the guts of this a function. 
     - [x] Add time estimate
     - [x] make old integer parameterizable, and able to run ada, babage etc.
-    - [ ] Make verbose into verbosity, an int from 0 .. 9
     - [x] Add price estimate and warnings
     - [ ] Add rate limiter so you don't get rate errors. 
         Overview: https://platform.openai.com/docs/guides/rate-limits/overview
         cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
         avoidance script: https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
+    - [ ] Encode the rate limits for each model, preferably in some extneral file
     - [ ] Add parallel processing of chunks, see https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
         #async def create_chat_completion():
         #    chat_completion_resp = await openai.ChatCompletion.acreate(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}])
 
-    - [ ] add chunk limiter to test output. Maybe just a "test" mode
+    - [x] add chunk limiter to test output. Maybe just a "test" mode
     - [x] Gracefully check that all filex exist before doing anything else.
     - [ ] Make a compare tool to compare the output of different models
-    - [ ] Migrate these improvements to the gpt command
 """
 
 
@@ -123,6 +125,7 @@ def setupArgparse():
     parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around text editing')
     parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. (code-davinci-002 is no longer offered).')
     parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
+        #default is used if no -t option is given. if -t is given with no param, then use const
     parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
     parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
     parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
@@ -133,9 +136,12 @@ def setupArgparse():
     parser.add_argument("-p", dest="presence_penalty", type=float, help="presence_penalty parameter. How much to penalize new tokens based on whether they appear in the text so far. Increaces the model's likelihood to talk about new topics. Clamped to [0,2]", default = 0)
 
     parser.add_argument('--echo', action='store_true', help='Print Prompt as well as responce')
-    parser.add_argument('--verbose', action='store_true', help='Spew everything')
+    parser.add_argument('--verbose', nargs='?', const=3, type=int, help='How verbose to print. 0 = silent.',default = -1)
+    parser.add_argument('-t',"--test", nargs='?', const=2, type=int, help='Put the system in test mode for prompt engineering, which runs a limited number of chunks that can be set here (default is 2). It also turns on some extra printing', default = -1)
+        #default is used if no -t option is given. if -t is given with no param, then use const
     parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
     parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.3.0') 
+
     args = parser.parse_args() 
     return args
 
@@ -155,7 +161,33 @@ backup_gtp_file = "gtpoutput_backup.txt"
 ######### Input Ingestion ##############
 if args.old == None:
     args.old = 1
-    print("This should never run. Go fix args.old")
+    print("Warning! This should never run. Go fix args.old")
+
+class Verb(IntEnum):
+    notSet=-1
+    silent=0
+    birthDeathMarriage=1
+    test=2
+    normal=3
+    curious=4
+    debug=5
+    hyperbarf=9
+verbosity = args.verbose
+
+is_test_mode = (args.test >= 0)
+if is_test_mode and verbosity <= Verb.notSet:
+    verbosity = Verb.test
+if verbosity = Verb.notSet:
+    verbosity = Verb.normal
+
+#Verbosity guide: 
+#0: silent
+#1: birth, death, marriage
+#2: test mode, what you need for prompt engineering.
+#3: more normal
+#
+#8:
+
 
 class Model_Type(Flag):
     CHAT = auto()
@@ -168,14 +200,9 @@ def to_int(thing):
     else:
         return int(thing)
 
-
-#####################################################
 class Model_Controler:
     def __init__(self):
         self.model_type = Model_Type.CHAT
-        #self.is_chatGPT = True #make this an enum
-        #self.is_GPT3= False
-        #self.is_edit= False
         self.use_max_tokens_out = False
         self.maxInputTokens = 2000 #max tokens to feed into the model at once
         self.model_maxInputTokens = self.maxInputTokens #theoretical max the model can take before error
@@ -219,24 +246,25 @@ class Model_Controler:
         else:
             maxInputTokens = int(inputToken_safety_margin * maxInputTokens )
         self.maxInputTokens = maxInputTokens
-    def Set_maxOutputTokens(self,user_advised_max_tokens_out__bool,user_advised_max_tokens_out__int=0,outputToken_safety_margin=2.0):
+    def Set_maxOutputTokens(self,user_advised_max_tokens_out__bool,user_advised_max_tokens_out__int=0,outputToken_safety_margin=2.0, verbosity=Verb.normal):
         #Must come after Set_maxInputTokens. better to instead call Set_TokenMaximua
         maxOutputTokens_default = 20000 #default output limit to prevent run-away
         maxOutputTokens = maxOutputTokens_default #default output limit to prevent run-away
         if user_advised_max_tokens_out__bool:
-            print("Warning: max_tokens_out is set. Are you sure you want to do that? This doesn't help with anything known but can cause gaps in the output")
+            if verbosity > verb.birthDeathMarriage:
+                print("Warning: max_tokens_out is set. Are you sure you want to do that? This doesn't help with anything known but can cause gaps in the output") 
     
             maxOutputTokens = abs(user_advised_max_tokens_out__int)
-            if args.max_tokens_out < 0:
-                print(f"Negative max_tokens_out feature is obsolte.")
-            if maxOutputTokens < self.maxInputTokens*outputToken_safety_margin:
-                print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens*outputToken_safety_margin} to prevent periodic truncations in the output.")
+            if args.max_tokens_out < 0 and verbosity > verb.birthDeathMarriage:
+                print(f"Negative max_tokens_out feature is obsolte.") 
+            if maxOutputTokens < self.maxInputTokens*outputToken_safety_margin and verbosity > verb.birthDeathMarriage:
+                print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens*outputToken_safety_margin} to prevent periodic truncations in the output.") 
                 maxOutputTokens = max(maxOutputTokens, self.maxInputTokens*outputToken_safety_margin)
         self.maxOutputTokens = maxOutputTokens
-    def Set_TokenMaxima(self,user_advised_max_tokens_in__bool, user_advised_max_tokens_in__int, inputToken_safety_margin,user_advised_max_tokens_out__bool,user_advised_max_tokens_out__int,outputToken_safety_margin):
+    def Set_TokenMaxima(self,user_advised_max_tokens_in__bool, user_advised_max_tokens_in__int, inputToken_safety_margin,user_advised_max_tokens_out__bool,user_advised_max_tokens_out__int,outputToken_safety_margin, verbosity=Verb.normal):
         self.Set_maxInputTokens(user_advised_max_tokens_in__bool, user_advised_max_tokens_in__int, inputToken_safety_margin)
-        self.Set_maxOutputTokens(user_advised_max_tokens_out__bool,user_advised_max_tokens_out__int,outputToken_safety_margin)
-    def Set_Model(self,modelname):
+        self.Set_maxOutputTokens(user_advised_max_tokens_out__bool,user_advised_max_tokens_out__int,outputToken_safety_margin, verbosity)
+    def Set_Model(self,modelname, verbosity=Verb.normal):
         self.Model = modelname
         if self.Model == "gpt-3.5-turbo":
             self.model_type = Model_Type.CHAT
@@ -254,7 +282,8 @@ class Model_Controler:
             self.model_type = Model_Type.EDIT
             self.model_maxInputTokens = 3000 #4097 #pure guess. Might be 2049
             self.Set_Prices(0.02, 0.02) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
-            print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+            if verbosity > Verb.birthDeathMarriage:
+                print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
         elif self.Model == "text-davinci-edit-001":
             self.model_type = Model_Type.EDIT
             self.model_maxInputTokens = 3000 #pure guess. Might be 2049
@@ -387,37 +416,40 @@ MC.Set_Temp(args.temp)
 
 #################################################
 #Set Model
-def SetModelFromArgparse(args, MC):
+def SetModelFromArgparse(args, MC, verbosity=Verb.normal):
     #MC = SetModel(args, MC)
     #MC.Set_Model("gpt-3.5-turbo")
     MC.Set_Model("gpt-3.5-turbo-0613")
     if args.gpt_3point5_turbo_16k:
         MC.Set_Model("gpt-3.5-turbo-16k")
-        if args.old > 0 or args.code or args.edit: #if args.old or args.code or args.edit:
+        if verbosity > Verb.birthDeathMarriage and (args.old > 0 or args.code or args.edit): #if args.old or args.code or args.edit:
             print("Note that the --16k flag cannot be combined with -c/--code, -e/--edit, or --old, and the latter will be ignored.")
     elif args.code:
         MC.Set_Model("code-davinci-edit-001")
-        print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+        if verbosity > Verb.birthDeathMarriage:
+            print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
     elif args.edit:
         MC.Set_Model("text-davinci-edit-001")
     elif args.old > 0: #elif args.old:
         #note, in terms of API compatability, here you can drop-in text-davinci-003, text-davinci-002, text-curie-001, text-babbage-001, text-ada-001
         if args.old == 1: #Best quality, longer output, and better consistent instruction-following than these other old models
             MC.Set_Model("text-davinci-003")
-            print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+            if verbosity > Verb.birthDeathMarriage:
+                print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
         elif args.old == 2:#Similar capabilities to text-davinci-003 but trained with supervised fine-tuning instead of reinforcement learning
             MC.Set_Model("text-davinci-002") 
-            print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+            if verbosity > Verb.birthDeathMarriage:
+                print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
         elif args.old == 3: #CURIE Very capable, but faster and lower cost than Davinci.
             MC.Set_Model("text-curie-001" )
         elif args.old == 4: #BABBAGE Capable of straightforward tasks, very fast, and lower cost.
             MC.Set_Model("text-babbage-001" )
         elif args.old >= 5: #ADA: Capable of very simple tasks, usually the fastest model in the GPT-3 series, and lowest cost.
             MC.Set_Model("text-ada-001")
-        if args.frequency_penalty or args.presence_penalty:
+        if verbosity > Verb.birthDeathMarriage and (args.frequency_penalty or args.presence_penalty):
             print("Note that with --old, the presence_penalty or frequency_penalty option do nothing")
     return MC
-MC = SetModelFromArgparse(args, MC)
+MC = SetModelFromArgparse(args, MC, verbosity)
 #Model, model_maxInputTokens, is_chatGPT,price_in, price_out = SetModel(args)
 
 #Instruction Prompt
@@ -441,14 +473,15 @@ def GetInstructionPrompt(args):
         else:
             Instruction = args.prompt_inst
     if Instruction == "":
-        print("Instruction prompt is required, none was given. Exiting.")
+        print("Error: Instruction prompt is required, none was given. Exiting.")
         sys.exit()
     return Instruction
 MC.Set_Instruction(GetInstructionPrompt(args))
 #MC.Set_maxInputTokens(bool(args.max_tokens_in), int(args.max_tokens_in), inputToken_safety_margin)
 #MC.Set_maxOutputTokens(bool(args.max_tokens_out),int(args.max_tokens_out),outputToken_safety_margin) #must come after 
 MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
-                   bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
+                   bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin,
+                   verbosity)
 
 output_file_set = bool(args.out)
 
@@ -477,7 +510,7 @@ def GetBodyPrompt(args):
         else:
             Prompt = args.prompt_body
     if Prompt == "":
-        print("Body prompt is required, none was given. Exiting.")
+        print("Error: Body prompt is required, none was given. Exiting.")
         sys.exit()
     return Prompt
 Prompt = GetBodyPrompt(args)
@@ -570,7 +603,8 @@ len_prompt__tokens_est = token_cut_light.nchars_to_ntokens_approx(len_prompt__ch
 est_cost__USD = MC.Get_PriceEstimate(len_prompt__tokens_est)
 expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt__char, MC.maxInputTokens )
     
-if args.verbose: #TODO make this a class member
+#if args.verbose: #TODO make this a class member
+if verbosity >= Verb.normal
     print("Model: ",MC.Model)
     print("max_tokens_in: ",MC.maxInputTokens )
     print("max_tokens_out: ",MC.maxOutputTokens )
@@ -580,9 +614,9 @@ if args.verbose: #TODO make this a class member
     print(f"Estimating this will be {expected_n_chunks} chunks")
 
 #Cost estimate dialogue
-if args.verbose or est_cost__USD > 0.1:
+if verbosity >= Verb.normal or est_cost__USD > 0.1:
     print(f"Estimated cost of this action: ${est_cost__USD:.2f}")
-    if est_cost__USD > 0.5:
+    if est_cost__USD > 0.5 and verbosity != verb.silent:
         answer = input("Would you like to continue? (y/n): ")
         if not (answer.lower() == 'y' or answer.lower == 'yes'):
             print("Disabling OpenAI API calls")
@@ -598,6 +632,11 @@ with open(args.out,'w') as fout:
             i_chunk = 0
             t_start0 = time.time()
             while chunk_start < len_prompt__char:
+
+                if is_test_mode: 
+                    if i_chunk >= args.test:
+                        break
+
                 t_start = time.time()
 
                     #chunk_end, frac_done = func(chunk_start, Prompt, MC.maxInputTokens, len_prompt__char)
@@ -607,13 +646,12 @@ with open(args.out,'w') as fout:
                 chunk_length__tokens_est = token_cut_light.nchars_to_ntokens_approx(chunk_length__char )
                 chunk = Prompt[chunk_start : chunk_end]
                 frac_done = chunk_end/len_prompt__char
-                if args.echo or args.verbose: 
-                    if args.verbose:
-                        print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
-                    else:
-                        print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
+                if verbosity >= verb.normal:
+                    print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
+                if args.echo:
+                    print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
                     print(chunk)
-                if args.verbose:
+                if verbosity >= verb.normal:
                     print(f"{100*chunk_start/len_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
                 chunk_start = chunk_end
 
@@ -632,37 +670,38 @@ with open(args.out,'w') as fout:
 
                     altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
 
-                if args.verbose:
+                if verbosity >= verb.debug: 
                     altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
-                if ntokens_in > 0:
+                if ntokens_in > 0 and verbosity != Verb.silent:
                     prop = abs(ntokens_in-ntokens_out)/ntokens_in
-                    if prop < 0.6:
-                        print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
-                    elif prop > 1.5:
-                        print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
+                    if verbosity > Verb.birthDeathMarriage:
+                        if prop < 0.6:
+                            print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
+                        elif prop > 1.5:
+                            print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
 
                 fout.write(altchunk)
 
                 i_chunk += 1
 
                 if i_chunk > expected_n_chunks*1.5: #loop timout, for debug
-                        print("loop ran to chunk",i_chunk, ". That seems too long. Breaking loop.")
+                        if verbosity != Verb.silent:
+                            print("Error: Loop ran to chunk",i_chunk, ". That seems too long. Breaking loop.")
                         break
 
-                if args.echo or args.verbose:
-                    total_run_time_so_far = time.time() - t_start0
-                    total_expected_run_time = total_run_time_so_far/frac_done 
-                    completion_ETA = total_expected_run_time - total_run_time_so_far
+                total_run_time_so_far = time.time() - t_start0
+                total_expected_run_time = total_run_time_so_far/frac_done 
+                completion_ETA = total_expected_run_time - total_run_time_so_far
+                suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
+                if verbosity >= Verb.normal:
                     print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
-                    suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
-
+                if args.echo:
                     print(altchunk + suffix)
 
-def DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file):
+def DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, verbosity):
     #body input is already copied to prompt_fname
     os.system("cp "+args.out+" "+backup_gtp_file+" &")
     
-    #print("meld "+prompt_fname +" "+args.out+" &")
     if mac_mode:
         os.system(f"open -a Meld {prompt_fname} {args.out} &")
     elif os.path.exists(meld_exe_file_path):
@@ -677,12 +716,13 @@ def DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file):
             print("vimdiff not found, resorting to diff :-/ ")
             os.system("diff " + prompt_fname +" "+args.out+" &")
             """
-    print(f"vimdiff {prompt_fname} {args.out}")
-    print("If you have a meld alias setup:")
-    print(f"meld {prompt_fname} {args.out} &")
-DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file)
+    if verbose > Verb.birthDeathMarriage:
+        print(f"vimdiff {prompt_fname} {args.out}")
+        print("If you have a meld alias setup:")
+        print(f"meld {prompt_fname} {args.out} &")
+DoFileDiff(args,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, verbosity)
 
-def MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file):
+def MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file, verbosity):
     ok_file = "ok"
     reject_file = "reject"
     with open(ok_file,'w') as fs:
@@ -700,12 +740,13 @@ def MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file):
         fs.write("rm ok\n")
         fs.write("rm reject\n")
 
-    if args.files: 
-        if output_file_set:
-            print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files. Final result is {args.out}.")
+    if verbosity > Verb.birthDeathMarriage:
+        if args.files: 
+            if output_file_set:
+                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files. Final result is {args.out}.")
+            else:
+                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files, and overwrites the input file {args.out} with the output {args.files}")
         else:
-            print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files, and overwrites the input file {args.out} with the output {args.files}")
-    else:
-        print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files.")
-    print("or reject changes with $ sc {reject_file}")
-MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file)
+            print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files.")
+        print("or reject changes with $ sc {reject_file}")
+MakeOkRejectFiles(args,output_file_set,prompt_fname,backup_gtp_file, verbosity)
