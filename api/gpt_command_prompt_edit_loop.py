@@ -5,6 +5,7 @@ import argparse
 import token_cut_light
 #from gpt import GPT
 import time
+import random
 from enum import Flag,auto, IntEnum
 
 """ #################### USAGE AND EXAMPLES ###########################
@@ -200,6 +201,54 @@ def to_int(thing):
     else:
         return int(thing)
 
+# define a retry decorator
+def retry_with_exponential_backoff(
+    func,
+    initial_delay: float = 1,
+    exponential_base: float = 2,
+    jitter: bool = True,
+    max_retries: int = 10,
+    errors: tuple = (openai.error.RateLimitError,),
+):
+    """
+    Retry a function with exponential backoff, coppied out of the OpenAI cookbook.
+    https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
+    May be replaced by the tenacity or backoff libraries.
+    """
+
+    def wrapper(*args, **kwargs):
+        # Initialize variables
+        num_retries = 0
+        delay = initial_delay
+
+        # Loop until a successful response or max_retries is hit or an exception is raised
+        while True:
+            try:
+                return func(*args, **kwargs)
+
+            # Retry on specified errors
+            except errors as e:
+                # Increment retries
+                num_retries += 1
+
+                # Check if max retries has been reached
+                if num_retries > max_retries:
+                    raise Exception(
+                        f"Maximum number of retries ({max_retries}) exceeded."
+                    )
+
+                # Increment the delay
+                delay *= exponential_base * (1 + jitter * random.random())
+
+                # Sleep for the delay
+                time.sleep(delay)
+
+            # Raise exceptions for any errors not specified
+            except Exception as e:
+                raise e
+
+    return wrapper
+
 class Model_Controler:
     def __init__(self):
         self.model_type = Model_Type.CHAT
@@ -314,6 +363,7 @@ class Model_Controler:
             sys.exit()
         self.maxInputTokens = self.model_maxInputTokens 
                     ###############
+    @retry_with_exponential_backoff
     def Run_OpenAI_LLM__Instruct(self,prompt_body):
         #responce, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(model )
         responce = ""
