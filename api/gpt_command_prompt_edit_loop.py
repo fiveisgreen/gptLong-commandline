@@ -78,12 +78,14 @@ TODO:
     - [x] Add time estimate
     - [x] make old integer parameterizable, and able to run ada, babage etc.
     - [x] Add price estimate and warnings
-    - [ ] Add rate limiter so you don't get rate errors. 
+    - [x] Add rate limiter so you don't get rate errors. 
         Overview: https://platform.openai.com/docs/guides/rate-limits/overview
         cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
         avoidance script: https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
-    - [ ] Encode the rate limits for each model, preferably in some extneral file
-    - [ ] Add parallel processing of chunks, see https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
+    - [x?] (Not needed?) Encode the rate limits for each model, preferably in some extneral file. 
+    - [ ] Add parallel processing of chunks, 
+        see https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
+        see https://github.com/openai/openai-cookbook/blob/90ef0f25e5615fa2bdd5982d6ce1162f4e3839c6/examples/api_request_parallel_processor.py
         #async def create_chat_completion():
         #    chat_completion_resp = await openai.ChatCompletion.acreate(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}])
 
@@ -109,8 +111,7 @@ PYTHONUTF8=1 #Put Python in UTF-8 mode, good for WSL and windows operations http
 prompt_fname = "raw_prompt.txt" #default. #copy of the full prompt body to this file, which will be used for meld.
 inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
 #This may be able to go higher. 
-outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit. 
-#This may need to go higher
+outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit.  #This may need to go higher
 
 #Argparse 
 def setupArgparse():
@@ -141,7 +142,7 @@ def setupArgparse():
     parser.add_argument('-t',"--test", nargs='?', const=2, type=int, help='Put the system in test mode for prompt engineering, which runs a limited number of chunks that can be set here (default is 2). It also turns on some extra printing', default = -1)
         #default is used if no -t option is given. if -t is given with no param, then use const
     parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
-    parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.3.0') 
+    parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.4.0') 
 
     args = parser.parse_args() 
     return args
@@ -204,10 +205,10 @@ def to_int(thing):
 # define a retry decorator
 def retry_with_exponential_backoff(
     func,
-    initial_delay: float = 1,
-    exponential_base: float = 2,
-    jitter: bool = True,
-    max_retries: int = 10,
+    initial_delay: float = 1, #seconds
+    exponential_base: float = 1.4, #Increace wait by the factor exponential_base * (1 + jitteriness*rand(0,1)) on each retry. OpenAI example is 2.0
+    jitteriness: float = 0.4, #set to 0 to turn off jitter. OpenAI example is 1.0
+    max_retries: int = 20,
     errors: tuple = (openai.error.RateLimitError,),
 ):
     """
@@ -215,6 +216,7 @@ def retry_with_exponential_backoff(
     https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
     May be replaced by the tenacity or backoff libraries.
     """
+    jitteriness = abs(jitteriness)
 
     def wrapper(*args, **kwargs):
         # Initialize variables
@@ -238,7 +240,7 @@ def retry_with_exponential_backoff(
                     )
 
                 # Increment the delay
-                delay *= exponential_base * (1 + jitter * random.random())
+                delay *= exponential_base * (1.0 + jitteriness * random.random()) #delay[sec] = exponential_base * (1 .. 2)
 
                 # Sleep for the delay
                 time.sleep(delay)
@@ -246,6 +248,8 @@ def retry_with_exponential_backoff(
             # Raise exceptions for any errors not specified
             except Exception as e:
                 raise e
+            if num_retries > max_retries+1:
+                break
 
     return wrapper
 
