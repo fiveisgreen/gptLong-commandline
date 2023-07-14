@@ -33,13 +33,13 @@ IO:
 #  -o OUT                Responce output file
 
 Model Selectors:
-#  -16k, --16k           Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code,
-                        -e/--edit, and --old
+#  -l, --long           Use a model with a longer context window. By default this is gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. If combined with --gpt4, gpt-4-32k will be used. This flag overrides -c/--code, -e/--edit, and --old
 #  -e, --edit            Uses the text-davinci-edit-001 model, which is older but oriented around text editing
 #  -c, --code            Uses the code-davinci-edit-001. (code-davinci-002 is no longer offered)
                         max input tokens. If combined with -e, uses 
 #  --old [OLD]           Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003;
                         2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada}
+#  -g4, --gpt4          Use GPT-4. If combined with --long uses GPT-4-32k
 
 Flags:
 #  -h, --help   show all options and exit
@@ -92,6 +92,7 @@ TODO:
     - [x] add chunk limiter to test output. Maybe just a "test" mode
     - [x] Gracefully check that all filex exist before doing anything else.
     - [ ] Make a compare tool to compare the output of different models
+    - [x] Make GPT-4 ready.
 """
 
 
@@ -126,9 +127,11 @@ def setupArgparse():
 
     parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around text editing')
     parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. (code-davinci-002 is no longer offered).')
+    parser.add_argument('-g4', '--gpt4', action='store_true', help='Uses a GPT-4 model. Usually this is gpt-4, but if combined with -l, gpt-4-32k will be used.')
     parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
         #default is used if no -t option is given. if -t is given with no param, then use const
-    parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
+    parser.add_argument('-l','--long', dest="long_context", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
+    #parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
     parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
     parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
     #The point here is to make sure chatGPT doesn't runaway. But this is really dumb since it's most likely to produce unwanted truncation. 
@@ -142,7 +145,7 @@ def setupArgparse():
     parser.add_argument('-t',"--test", nargs='?', const=2, type=int, help='Put the system in test mode for prompt engineering, which runs a limited number of chunks that can be set here (default is 2). It also turns on some extra printing', default = -1)
         #default is used if no -t option is given. if -t is given with no param, then use const
     parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
-    parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.4.0') 
+    parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.5.0') 
 
     args = parser.parse_args() 
     return args
@@ -327,9 +330,17 @@ class Model_Controler:
             self.model_type = Model_Type.CHAT
             self.model_maxInputTokens  = 4096 #max tokens that the model can handle
             self.Set_Prices(0.0015, 0.002) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "gpt-4":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens = 8192 
+            self.Set_Prices(0.03, 0.06) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "gpt-4-32k":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens = 32768 
+            self.Set_Prices(0.06, 0.12) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
         elif self.Model == "gpt-3.5-turbo-16k":
             self.model_type = Model_Type.CHAT
-            self.model_maxInputTokens = 16000 #may be 16384. the webpage only says "16k". 
+            self.model_maxInputTokens = 16384 
             self.Set_Prices(0.003, 0.004) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
         elif self.Model == "code-davinci-edit-001":
             self.model_type = Model_Type.EDIT
@@ -474,10 +485,15 @@ def SetModelFromArgparse(args, MC, verbosity=Verb.normal):
     #MC = SetModel(args, MC)
     #MC.Set_Model("gpt-3.5-turbo")
     MC.Set_Model("gpt-3.5-turbo-0613")
-    if args.gpt_3point5_turbo_16k:
-        MC.Set_Model("gpt-3.5-turbo-16k")
+    if args.long_context:
+        if args.gpt4:
+            MC.Set_Model("gpt-4-32k")
+        else:
+            MC.Set_Model("gpt-3.5-turbo-16k")
         if verbosity > Verb.birthDeathMarriage and (args.old > 0 or args.code or args.edit): #if args.old or args.code or args.edit:
-            print("Note that the --16k flag cannot be combined with -c/--code, -e/--edit, or --old, and the latter will be ignored.")
+            print("Note that the -l/--long flag cannot be combined with -c/--code, -e/--edit, or --old, and the latter will be ignored.")
+    elif args.gpt4:
+        MC.Set_Model("gpt-4")
     elif args.code:
         MC.Set_Model("code-davinci-edit-001")
         if verbosity > Verb.birthDeathMarriage:
