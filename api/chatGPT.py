@@ -13,7 +13,8 @@ if len(sys.argv) >= 2:
     print("System:",sys.argv[1])
     System_Prompt = sys.argv[1]
 
-Model = "gpt-3.5-turbo" #ChatGPT
+#Model = "gpt-3.5-turbo" #ChatGPT
+Model = "gpt-4-0613" #If this works for you, call me. We'll throw a party.
 #Model = "gpt-4" #If this works for you, call me. We'll throw a party.
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
