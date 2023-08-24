@@ -6,7 +6,7 @@ Two commands are made available `gpt` and `gpte`. `gpte` can be used to edit arb
 For both, use the -c or --code options to change to code oriented models. 
 
 ## Setup 
-gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). Then have to set the location of the Meld executable in api/gpt\_command\_prompt\_edit\_loop.py on line 12.
+gpte command calls a file difference tool, which can be Meld, vimdiff, or diff. I recommend installing [Meld](https://meld.app/). Then have to set the location of the Meld executable in src/gpt\_command\_prompt\_edit\_loop.py on line 12.
 
 `git clone https://github.com/fiveisgreen/gptLong-commandline.git`
 

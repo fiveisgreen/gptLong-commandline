@@ -86,18 +86,18 @@ else
 fi
 
 if [[ $(grep -c "alias chatgpt=" $RCfile) -le 0 ]]; then
-  echo "alias chatgpt='python3 `pwd`/api/chatGPT.py'" >> $RCfile
+  echo "alias chatgpt='python3 `pwd`/src/chatGPT.py'" >> $RCfile
   echo "Command 'chatgpt' is now defined."
 else
   echo "chatgpt command found."
   grep "alias chatgpt=" $RCfile
 fi
 if [[ $(grep -c "alias chatgtp=" $RCfile) -le 0 ]]; then
-  echo "alias chatgtp='python3 `pwd`/api/chatGPT.py'" >> $RCfile
+  echo "alias chatgtp='python3 `pwd`/src/chatGPT.py'" >> $RCfile
 fi
 
 if [[ $(grep -c "alias gpt=" $RCfile) -le 0 ]]; then
-  echo "alias gpt='python3 `pwd`/api/gpt_command_prompt.py'" >> $RCfile
+  echo "alias gpt='python3 `pwd`/src/gpt_command_prompt.py'" >> $RCfile
   echo "Command 'gpt' is now defined."
 else
     echo "gpt command found."
@@ -105,11 +105,11 @@ else
 fi
 
 if [[ $(grep -c "alias gtp=" $RCfile) -le 0 ]]; then
-  echo "alias gtp='python3 `pwd`/api/gpt_command_prompt.py'" >> $RCfile
+  echo "alias gtp='python3 `pwd`/src/gpt_command_prompt.py'" >> $RCfile
 fi
 
 if [[ $(grep -c "alias gpte=" $RCfile) -le 0 ]]; then
-  echo "alias gpte='python3 `pwd`/api/gpt_command_prompt_edit_loop.py'" >> $RCfile
+  echo "alias gpte='python3 `pwd`/src/gpt_command_prompt_edit_loop.py'" >> $RCfile
   echo "Command 'gpte' is now defined."
 else
     echo "gpte command found."
@@ -117,7 +117,7 @@ else
 fi
 
 if [[ $(grep -c "alias gtpe=" $RCfile) -le 0 ]]; then
-  echo "alias gtpe='python3 `pwd`/api/gpt_command_prompt_edit_loop.py'" >> $RCfile
+  echo "alias gtpe='python3 `pwd`/src/gpt_command_prompt_edit_loop.py'" >> $RCfile
 fi
 echo "Reloading shell startup configuration"
 source $RCfile
