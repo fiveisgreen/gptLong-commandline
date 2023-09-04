@@ -6,7 +6,7 @@ import token_cut_light
 #from gpt import GPT
 import time
 import random
-from enum import Flag,auto, IntEnum
+from enum import Flag, auto, IntEnum
 
 """ #################### USAGE AND EXAMPLES ###########################
 
@@ -93,6 +93,9 @@ TODO:
     - [x] Gracefully check that all filex exist before doing anything else.
     - [ ] Make a compare tool to compare the output of different models
     - [x] Make GPT-4 ready.
+    - [x] Make it take in line numbers for -f files
+    - [ ] Make it take an arbitrary number of body files, sequentially operating on each file in edit mode. 
+    - [ ] Make a doc string tool -- maybe an insert mode -- maybe something seperate.
 """
 
 
@@ -118,10 +121,12 @@ outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chu
 def setupArgparse():
     #argparse documentation: https://docs.python.org/3/library/argparse.html
     parser = argparse.ArgumentParser(description='''A basic command line parser for GPT3-edit mode''', epilog = '''Command-line interface written by Anthony Barker, 2022. The main strucutre was written primarily by Shreya Shankar, Bora Uyumazturk, Devin Stein, Gulan, and Michael Lavelle''', prog="gpt_command_prompt")
-    parser.add_argument("prompt_inst", nargs='?', help="Instruction prompt string. If both this and -i files are give, this goes after the file contents.")
-    parser.add_argument("prompt_body", nargs='?', help="Body prompt string. If both this and -f files are give, this goes after the file contents.") #broken
+    parser.add_argument("prompt_inst", nargs='?', help="Instruction prompt string. If both this and -i files are give, this goes after the file contents.") 
+    parser.add_argument("prompt_body", nargs='?', help="Body prompt string. If both this and -f files are give, this goes after the file contents.") #broken #TODO fix this
 
     parser.add_argument("-f","--files", help="Prompt file of body text to be edited.") #"files" for historical reasons but there's at most 1 file.
+    #parser.add_argument("-f","--files", nargs='+',help="Prompt file of body text to be edited.") #"files" for historical reasons but there's at most 1 file. #TODO Make this go
+    parser.add_argument('-ln',"--lines", nargs=2, type=int, help="Line number range to consider for body text files. -l [line_from line_to]. Negative numbers go to beginning, end respectively. Line numbers start at 1", default=[-1, -1])
     parser.add_argument("-i", dest="instruction_files", nargs='+', help="Prompt files, to be used for edit instructions.") 
     parser.add_argument("-o", dest="out", help="Responce output file", default = "gptoutput.txt")  
 
@@ -531,12 +536,18 @@ def GetInstructionPrompt(args):
             if not os.path.exists(fname):
                 print("Error: instruction file not found ",fname)
                 sys.exit()
+            if Instruction != "":
+                    Instruction += '\n'
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
+                Instruction += fin.read() 
+            """
             if Instruction == "":
                 with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
                     Instruction = fin.read()
             else: 
                 with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
                     Instruction += '\n' + fin.read() 
+            """
     if args.prompt_inst:
         if Instruction == "":
             Instruction += '\n' + args.prompt_inst
@@ -555,12 +566,52 @@ MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputTo
 
 output_file_set = bool(args.out)
 
+def GetLineRange(lines,nlines):
+    #take a tuple of (min_line,max_line) from argparse -ln --lines. Starting line is 0, defaut is -1
+    #and format these into an actual line range (start at 0) that won't run off the end of the file.
+    min_line = min(max(0,lines[0]-1), nlines) #clamp to 0..nlines
+    max_line = lines[1] 
+    if max_line <=0: #handle default case of -1 refering to the end of the file
+        max_lines = nlines
+    else:
+        max_line = min(max(max_line,min_line),nlines)
+    return min_line, max_line
+
 def GetBodyPrompt(args):
+    #uses args.files, args.lines, args.prompt_body, and mutates args.out
     Prompt = ""
     if args.files: 
-            if not os.path.exists(args.files):
-                print("Error: prompt file not found ",args.files)
+            #refined predicessor part 2
+            #with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
+            #        Prompt += fin.read() 
+            fname = args.files
+            #for fname in args.files:
+            if not os.path.exists(fname):
+                print("Error: prompt file not found ",fname)
                 sys.exit()
+
+            if Prompt != "": #refined predecessor part 1
+                Prompt += '\n'
+
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
+                lines = fin.readlines()
+                min_line, max_line = GetLineRange(args.lines,len(lines))
+                Prompt += ''.join(lines[min_line:max_line])
+
+            """
+            with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
+                min_line = max(0,args.lines[0]-1) 
+                max_line = args.lines[1] 
+                lines = fin.readlines()
+                nlines = len(lines)
+                if max_line < 0 or max_line >= nlines:
+                    max_line = nlines
+                max_line = max(max_line,min_line+1)
+                Prompt += ''.join(lines[min_line:max_line])
+                """
+
+            """
+            #overcomplicated predicessor
             if Prompt == "":
                 with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
                     Prompt = fin.read() 
@@ -568,8 +619,9 @@ def GetBodyPrompt(args):
             else: 
                 with open(args.files, 'r', encoding=Encoding, errors='ignore') as fin:
                     Prompt += '\n' + fin.read() 
+            """
     
-            prefix, extension = parse_fname(args.files)
+            prefix, extension = parse_fname(fname) 
             if not args.out:
                 args.out = prefix+"__gtpMeld"+extension 
             backup_gtp_file = prefix+"__gtpRaw"+extension 
@@ -738,7 +790,7 @@ with open(args.out,'w') as fout:
                     #GPT-3 CALL 
                     altchunk_course, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM__Instruct(chunk)
 
-                    altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
+                altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
 
                 if is_test_mode and i_chunk >= args.test -1:
                     altchunk += "\n Output terminated by test option"
