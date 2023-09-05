@@ -1,7 +1,7 @@
 import os, sys
 import openai
 import argparse
-import token_cut_light
+import token_cut_light as tcl
 #from gpt import GPT
 import time
 
@@ -100,6 +100,8 @@ TODO:
 
 """SETTINGS"""
 prompt_fname = "raw_prompt.txt" #default. #copy of the full prompt body to this file, which will be used for meld.
+backup_gtp_file = "gtpoutput_backup.txt"
+
 inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
 #This may be able to go higher. 
 outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit.  #This may need to go higher
@@ -170,35 +172,32 @@ def SetModelFromArgparse(args, MC):
             print("Note that with --old, the presence_penalty or frequency_penalty option do nothing")
     return MC
 
-args = setupArgparse()
-
-#Model parameter prototypes: 
-backup_gtp_file = "gtpoutput_backup.txt"
-
 ######### Input Ingestion ##############
+args = setupArgparse()
 if args.old == None:
     args.old = 1
     print("Warning! This should never run. Go fix args.old")
 
-is_test_mode = (args.test >= 0)
+PC = Process_Controler()
+PC.Set_Test_Chunks(args.test)
+PC.Set_disable_openAI_calls(args.disable)
+
 
 MC = Model_Controler()
-MC.Set_Verbosity(args.verbose, is_test_mode )
+MC.Set_Verbosity(args.verbose, PC.is_test_mode )
 MC.Set_Top_p(args.top_p)
 MC.Set_Frequency_penalty(args.frequency_penalty)
 MC.Set_Presence_penalty(args.presence_penalty)
 MC.Set_Temp(args.temp)
-
 MC = SetModelFromArgparse(args, MC)
-
 MC.Set_Instruction(GetInstructionPrompt(args.instruction_files, args.prompt_inst))
 MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
                    bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
 
-
 output_file_set = bool(args.out)
 
 Prompt = GetBodyPrompt(args.files, args.lines, args.prompt_body)
+
 
 prefix, extension = parse_fname(fname)
 if not args.out: 
@@ -210,9 +209,9 @@ with open(prompt_fname,'w') as fp:
     fp.write(Prompt)    
 
 len_prompt__char = len(Prompt)
-len_prompt__tokens_est = token_cut_light.nchars_to_ntokens_approx(len_prompt__char)
+len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
 est_cost__USD = MC.Get_PriceEstimate(len_prompt__tokens_est)
-expected_n_chunks = token_cut_light.count_chunks_approx(len_prompt__char, MC.maxInputTokens )
+expected_n_chunks = tcl.count_chunks_approx(len_prompt__char, MC.maxInputTokens )
     
 #if args.verbose: #TODO make this a class member
 if verbosity >= Verb.normal:
@@ -231,90 +230,11 @@ if verbosity >= Verb.normal or est_cost__USD > 0.1:
         answer = input("Would you like to continue? (y/n): ")
         if not (answer.lower() == 'y' or answer.lower == 'yes'):
             print("Disabling OpenAI API calls")
-            args.disable = True
+            PC.Set_disable_openAI_calls(True)
 
-#Main 
-#def run_loop( in_file_name, out_file_name, gtp_instructions,  maxInputTokens = 4095):
-with open(args.out,'w') as fout:
-            if not args.disable:
-                openai.api_key = os.getenv("OPENAI_API_KEY")
-            
-            chunk_start = 0
-            i_chunk = 0
-            t_start0 = time.time()
-            while chunk_start < len_prompt__char:
-
-                if is_test_mode: 
-                    if i_chunk >= args.test:
-                        break
-
-                t_start = time.time()
-
-                    #chunk_end, frac_done = func(chunk_start, Prompt, MC.maxInputTokens, len_prompt__char)
-                chunk_end = chunk_start + token_cut_light.guess_token_truncate_cutint_safer(Prompt[chunk_start:], MC.maxInputTokens)
-                chunk_end = rechunk(Prompt,len_prompt__char, chunk_start, chunk_end)
-                chunk_length__char = chunk_end - chunk_start
-                chunk_length__tokens_est = token_cut_light.nchars_to_ntokens_approx(chunk_length__char )
-                chunk = Prompt[chunk_start : chunk_end]
-                frac_done = chunk_end/len_prompt__char
-                if verbosity >= Verb.normal:
-                    print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
-                if args.echo or verbosity >= Verb.hyperbarf:
-                    print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
-                    print(chunk)
-                if verbosity >= Verb.normal:
-                    print(f"{100*chunk_start/len_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
-                chunk_start = chunk_end
-
-                front_white_idx = get_front_white_idx(chunk)
-                chunk_front_white_space = chunk[:front_white_idx ]
-                chunk_end_white_space = chunk[get_back_white_idx(chunk,front_white_idx):]
-                stripped_chunk = chunk.strip()
-                
-                ntokens_in = 0
-                ntokens_out = 0
-                if args.disable:
-                     altchunk_course = chunk
-                else:
-                    #GPT-3 CALL 
-                    altchunk_course, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM__Instruct(chunk)
-
-                altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
-
-                if is_test_mode and i_chunk >= args.test -1:
-                    altchunk += "\n Output terminated by test option"
-                    if verbosity > Verb.silent:
-                        print("\n Output terminated by test option")
-
-                if verbosity >= Verb.debug: 
-                    altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
-                if ntokens_in > 0 and verbosity != Verb.silent:
-                    prop = abs(ntokens_in-ntokens_out)/ntokens_in
-                    if prop < 0.6:
-                        print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
-                    elif prop > 1.5:
-                        print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
-
-                fout.write(altchunk)
-
-                i_chunk += 1
-
-                if i_chunk > expected_n_chunks*1.5: #loop timout, for debug
-                        if verbosity != Verb.silent:
-                            print("Error: Loop ran to chunk",i_chunk, ". That seems too long. Breaking loop.")
-                        break
-
-                total_run_time_so_far = time.time() - t_start0
-                total_expected_run_time = total_run_time_so_far/frac_done 
-                completion_ETA = total_expected_run_time - total_run_time_so_far
-                suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
-                if verbosity >= Verb.normal:
-                    print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
-                if args.echo or verbosity >= Verb.hyperbarf:
-                    print(altchunk + suffix)
-                if is_test_mode and i_chunk >= args.test -1 and verbosity > Verb.silent:
-                    print("\n Output terminated by test option")
+#Main Loop and LLM calls:
+Loop_LLM_to_file(Prompt, len_prompt__char, args.out, MC, PC)
 
 DoFileDiff(args.out,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, MC.verbosity)
 
-MakeOkRejectFiles(args.out, args.files, output_file_set, prompt_fname, backup_gtp_file, MC.verbosity, is_test_mode)
+MakeOkRejectFiles(args.out, args.files, output_file_set, prompt_fname, backup_gtp_file, MC.verbosity, PC.is_test_mode)

@@ -1,8 +1,8 @@
 import os, sys
-import json
+#import json
 import openai
 #import argparse
-import token_cut_light
+import token_cut_light as tcl
 #from gpt import GPT
 import time
 import random
@@ -176,7 +176,7 @@ class Model_Controler:
         self.Temp = clamp(temp ,0.0,1.0) 
     def Set_Instruction(self,Instruction:str) -> None: 
         self.Instructions = Instruction
-        len_Instruction__tokens = token_cut_light.nchars_to_ntokens_approx(len(self.Instruction) ) 
+        len_Instruction__tokens = tcl.nchars_to_ntokens_approx(len(self.Instruction) ) 
         if len_Instruction__tokens > 0.8*self.model_maxInputTokens:
             print(f"Error: Instructions are too long ({len_Instruction__tokens} tokens, while the model's input token maximum is {model_maxInputTokens} for both instructions and prompt.")
             sys.exit()
@@ -437,7 +437,7 @@ def GetInstructionPrompt(instruction_files, prompt_inst) -> str:
 
 def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> str:
     #raw_line_range is a 2-long tuple of ints, 
-    return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_inst), prompt_inst, "instruction", raw_line_range)
+    return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_inst), prompt_inst, "body", raw_line_range)
 
 def get_front_white_idx(text:str) -> str: #tested
     #ret int indx of front white space
@@ -519,37 +519,58 @@ def rechunk(text:str, len_text:int, chunk_start:int, chunk_end:int) -> int: #TO_
     chunk_end = max(ranking, key=ranking.get)
     return chunk_end
 
-"""
-#Main 
-#def run_loop( in_file_name, out_file_name, gtp_instructions,  maxInputTokens = 4095):
-with open(args.out,'w') as fout:
-            if not args.disable:
-                openai.api_key = os.getenv("OPENAI_API_KEY")
-            
-            chunk_start = 0
-            i_chunk = 0
-            t_start0 = time.time()
-            while chunk_start < len_prompt__char:
+class Process_Controler:
+    def __init__(self):
+        self.verbosity=Verb.normal
+        self.disable_openAI_calls = False
+        self.echo = False
+        self.is_test_mode = False
+        self.test_mode_max_chunks = 999 
+    def Set_disable_openAI_calls(disable:bool) -> None:
+        self.disable_openAI_calls = disable
+    def Set_Echo(echo:bool) -> None:
+        self.echo = echo
+    def Set_Test_Chunks(test_mode_max_chunks:int):
+        self.is_test_mode = (test_mode_max_chunks >= 0)
+        self.test_mode_max_chunks = 999 
+    def Set_Verbosity(self, verbosity:Verb) -> None:
+        if self.is_test_mode and verbosity <= Verb.notSet:
+            self.verbosity = Verb.test
+        elif verbosity == Verb.notSet:
+            self.verbosity = Verb.normal
+        else:
+            self.verbosity = verbosity
 
-                if is_test_mode: 
-                    if i_chunk >= args.test:
+def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, out_file_name:str, MC:Model_Controler, PC:Process_Controler) -> None: 
+    #TODO simplify this! make the interior of the while a function. Also break it into a bunch of functions.
+    with open(out_file_name,'w') as fout:
+        if not PC.disable_openAI_calls:
+            openai.api_key = os.getenv("OPENAI_API_KEY")
+            
+        chunk_start = 0
+        i_chunk = 0
+        t_start0 = time.time()
+
+        while chunk_start < len_prompt__char:
+                if PC.is_test_mode: 
+                    if i_chunk >= PC.test_mode_max_chunks:
                         break
 
                 t_start = time.time()
 
                     #chunk_end, frac_done = func(chunk_start, Prompt, MC.maxInputTokens, len_prompt__char)
-                chunk_end = chunk_start + token_cut_light.guess_token_truncate_cutint_safer(Prompt[chunk_start:], MC.maxInputTokens)
+                chunk_end = chunk_start + tcl.guess_token_truncate_cutint_safer(Prompt[chunk_start:], MC.maxInputTokens)
                 chunk_end = rechunk(Prompt,len_prompt__char, chunk_start, chunk_end)
                 chunk_length__char = chunk_end - chunk_start
-                chunk_length__tokens_est = token_cut_light.nchars_to_ntokens_approx(chunk_length__char )
+                chunk_length__tokens_est = tcl.nchars_to_ntokens_approx(chunk_length__char )
                 chunk = Prompt[chunk_start : chunk_end]
                 frac_done = chunk_end/len_prompt__char
-                if verbosity >= Verb.normal:
+                if PC.verbosity >= Verb.normal:
                     print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
-                if args.echo or verbosity >= Verb.hyperbarf:
+                if PC.echo or PC.verbosity >= Verb.hyperbarf:
                     print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
                     print(chunk)
-                if verbosity >= Verb.normal:
+                if PC.verbosity >= Verb.normal:
                     print(f"{100*chunk_start/len_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
                 chunk_start = chunk_end
 
@@ -560,22 +581,22 @@ with open(args.out,'w') as fout:
                 
                 ntokens_in = 0
                 ntokens_out = 0
-                if args.disable:
+                if PC.disable_openAI_calls:
                      altchunk_course = chunk
                 else:
-                    #GPT-3 CALL 
+                    #LLM CALL 
                     altchunk_course, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM__Instruct(chunk)
 
                 altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
 
-                if is_test_mode and i_chunk >= args.test -1:
+                if PC.is_test_mode and i_chunk >= PC.test_mode_max_chunks -1:
                     altchunk += "\n Output terminated by test option"
-                    if verbosity > Verb.silent:
+                    if PC.verbosity > Verb.silent:
                         print("\n Output terminated by test option")
 
-                if verbosity >= Verb.debug: 
+                if PC.verbosity >= Verb.debug: 
                     altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
-                if ntokens_in > 0 and verbosity != Verb.silent:
+                if ntokens_in > 0 and PC.verbosity != Verb.silent:
                     prop = abs(ntokens_in-ntokens_out)/ntokens_in
                     if prop < 0.6:
                         print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
@@ -587,7 +608,7 @@ with open(args.out,'w') as fout:
                 i_chunk += 1
 
                 if i_chunk > expected_n_chunks*1.5: #loop timout, for debug
-                        if verbosity != Verb.silent:
+                        if PC.verbosity != Verb.silent:
                             print("Error: Loop ran to chunk",i_chunk, ". That seems too long. Breaking loop.")
                         break
 
@@ -595,13 +616,12 @@ with open(args.out,'w') as fout:
                 total_expected_run_time = total_run_time_so_far/frac_done 
                 completion_ETA = total_expected_run_time - total_run_time_so_far
                 suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
-                if verbosity >= Verb.normal:
+                if PC.verbosity >= Verb.normal:
                     print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
-                if args.echo or verbosity >= Verb.hyperbarf:
+                if PC.echo or PC.verbosity >= Verb.hyperbarf:
                     print(altchunk + suffix)
-                if is_test_mode and i_chunk >= args.test -1 and verbosity > Verb.silent:
+                if PC.is_test_mode and i_chunk >= test_mode_max_chunks -1 and PC.verbosity > Verb.silent:
                     print("\n Output terminated by test option")
-"""
 
 def DoFileDiff(output_file:str, mac_mode:bool, meld_exe_file_path:str, prompt_fname:str, backup_gtp_file:str, verbosity:Verb) -> None:
     #body input is already copied to prompt_fname
