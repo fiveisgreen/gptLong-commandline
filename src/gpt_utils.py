@@ -1,0 +1,655 @@
+import os, sys
+import json
+import openai
+#import argparse
+import token_cut_light
+#from gpt import GPT
+import time
+import random
+from enum import Flag, auto, IntEnum
+
+"""SETTINGS"""
+meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe" #don't use backslashes before spaces. Don't worry about this if you're on mac.
+mac_mode = False
+if sys.platform == "darwin":
+    mac_mode = True
+
+#list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
+Encoding = "utf8" #
+#Encoding = "latin1" #ok regardless of utf8 mode, but tends to wrech singla and double quotation marks
+#Encoding = "cp437" #English problems
+#Encoding = "cp500" #Western Europe
+PYTHONUTF8=1 #Put Python in UTF-8 mode, good for WSL and windows operations https://docs.python.org/3/using/windows.html#utf-8-mode
+
+"""
+def setupArgparse_gpte():
+    #argparse documentation: https://docs.python.org/3/library/argparse.html
+    parser = argparse.ArgumentParser(description='''A basic command line parser for GPT3-edit mode''', epilog = '''Command-line interface written by Anthony Barker, 2022. The main strucutre was written primarily by Shreya Shankar, Bora Uyumazturk, Devin Stein, Gulan, and Michael Lavelle''', prog="gpt_command_prompt")
+    parser.add_argument("prompt_inst", nargs='?', help="Instruction prompt string. If both this and -i files are give, this goes after the file contents.") 
+    parser.add_argument("prompt_body", nargs='?', help="Body prompt string. If both this and -f files are give, this goes after the file contents.") #broken #TODO fix this
+    parser.add_argument("-f","--files", help="File of body prompt text to be edited.") #"files" for historical reasons but there's at most 1 file.
+    #parser.add_argument("-f","--files", nargs='+',help="Prompt file of body text to be edited.") #"files" for historical reasons but there's at most 1 file. #TODO Make this go
+    parser.add_argument('-ln',"--lines", nargs=2, type=int, help="Line number range to consider for body text files. -l [line_from line_to]. Negative numbers go to beginning, end respectively. Line numbers start at 1", default=[-1, -1])
+    parser.add_argument("-i", dest="instruction_files", nargs='+', help="Instruction prompt files, to be used for edit instructions.") 
+    parser.add_argument("-o", dest="out", help="Responce output file", default = "gptoutput.txt")  
+    parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around text editing')
+    parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. (code-davinci-002 is no longer offered).')
+    parser.add_argument('-g4', '--gpt4', action='store_true', help='Uses a GPT-4 model. Usually this is gpt-4, but if combined with -l, gpt-4-32k will be used.')
+    parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
+        #default is used if no -t option is given. if -t is given with no param, then use const
+    parser.add_argument('-l','--long', dest="long_context", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
+    #parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
+    parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
+    parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
+    #The point here is to make sure chatGPT doesn't runaway. But this is really dumb since it's most likely to produce unwanted truncation. 
+    parser.add_argument("--top_p", type=float, help="top_p parameter. Controls diversity via nucleus sampling. 0.5 means half of all likelihood-weighted options are considered. Clamped to [0,1]", default = 1.0) 
+    parser.add_argument("--temp", type=float, help="temperature parameter. Controls randomness. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Clamped to [0,1]", default = 0) 
+    parser.add_argument("-q", dest="frequency_penalty", type=float, help="frequency_penalty parameter. How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model's likelihood of repeating the same line verbatim. Clamped to [0,2]", default = 0)
+    parser.add_argument("-p", dest="presence_penalty", type=float, help="presence_penalty parameter. How much to penalize new tokens based on whether they appear in the text so far. Increaces the model's likelihood to talk about new topics. Clamped to [0,2]", default = 0)
+    parser.add_argument('--echo', action='store_true', help='Print prompt as well as responce')
+    parser.add_argument('--verbose', nargs='?', const=3, type=int, help='How verbose to print. 0 = silent.',default = -1)
+    parser.add_argument('-t',"--test", nargs='?', const=2, type=int, help='Put the system in test mode for prompt engineering, which runs a limited number of chunks that can be set here (default is 2). It also turns on some extra printing', default = -1)
+        #default is used if no -t option is given. if -t is given with no param, then use const
+    parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
+    parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.5.0') 
+    args = parser.parse_args() 
+    return args
+"""
+
+def clamp(num, minval, maxval):
+	return max(min(num, maxval),minval)
+
+def parse_fname(fname:str) -> tuple[str,str]: #parse file names, returning the mantissa, and .extension
+    i_dot = fname.rfind('.')
+    return fname[:i_dot], fname[i_dot:]
+
+class Verb(IntEnum):
+    notSet=-1
+    silent=0
+    birthDeathMarriage=1
+    test=2
+    normal=3
+    curious=4
+    debug=5
+    hyperbarf=9
+
+class Model_Type(Flag):
+    CHAT = auto()
+    GPT3 = auto()
+    EDIT = auto()
+
+def to_int(thing) -> int:
+    if(thing==None):
+        return 0
+    else:
+        return int(thing)
+
+# define a retry decorator
+def retry_with_exponential_backoff(
+    func,
+    initial_delay: float = 1, #seconds
+    exponential_base: float = 1.4, #Increace wait by the factor exponential_base * (1 + jitteriness*rand(0,1)) on each retry. OpenAI example is 2.0
+    jitteriness: float = 0.4, #set to 0 to turn off jitter. OpenAI example is 1.0
+    max_retries: int = 20,
+    errors: tuple = (openai.error.RateLimitError,),
+):
+    """
+    Retry a function with exponential backoff, coppied out of the OpenAI cookbook.
+    https://github.com/openai/openai-cookbook/blob/main/examples/How_to_handle_rate_limits.ipynb
+    May be replaced by the tenacity or backoff libraries.
+    """
+    jitteriness = abs(jitteriness)
+
+    def wrapper(*args, **kwargs):
+        # Initialize variables
+        num_retries = 0
+        delay = initial_delay
+
+        # Loop until a successful response or max_retries is hit or an exception is raised
+        while True:
+            try:
+                return func(*args, **kwargs)
+
+            # Retry on specified errors
+            except errors as e:
+                # Increment retries
+                num_retries += 1
+
+                # Check if max retries has been reached
+                if num_retries > max_retries:
+                    raise Exception(
+                        f"Maximum number of retries ({max_retries}) exceeded."
+                    )
+
+                # Increment the delay
+                delay *= exponential_base * (1.0 + jitteriness * random.random()) #delay[sec] = exponential_base * (1 .. 2)
+
+                # Sleep for the delay
+                time.sleep(delay)
+
+            # Raise exceptions for any errors not specified
+            except Exception as e:
+                raise e
+            if num_retries > max_retries+1:
+                break
+
+    return wrapper
+
+class Model_Controler:
+    def __init__(self):
+        self.model_type = Model_Type.CHAT
+        self.use_max_tokens_out = False
+        self.maxInputTokens = 2000 #max tokens to feed into the model at once
+        self.model_maxInputTokens = self.maxInputTokens #theoretical max the model can take before error
+        self.maxOutputTokens = 20000
+        self.Temp = 0
+        self.Top_p = 1
+        self.Frequency_penalty = 0
+        self.Presence_penalty = 0
+        self.price_in = 0 #price per input and system token in USD
+        self.price_out = 0 #price per input token in USD
+        self.chunk = ""
+        self.Model = ""
+        self.Instruction = ""
+        self.len_Instruction__tokens = 0
+        self.verbosity=Verb.normal
+        #self.conversation = None
+
+    def Set_Verbosity(self,verbosity:Verb,is_test_mode = False ) -> None:
+        if is_test_mode and verbosity <= Verb.notSet:
+            self.verbosity = Verb.test
+        elif verbosity == Verb.notSet:
+            self.verbosity = Verb.normal
+        else:
+            self.verbosity = verbosity
+    def Set_Prices(self,price_per_1000_input_tokens__USD:float, price_per_1000_output_tokens__USD:float) -> None:
+        #see https://openai.com/pricing
+        self.price_in =  price_per_1000_input_tokens__USD/1000
+        self.price_out = price_per_1000_output_tokens__USD/1000
+    def Set_Top_p(self,top_p:float) -> None:
+        self.Top_p= clamp(args.top_p ,0.0,1.0) 
+    def Set_Frequency_penalty(self,frequency_penalty:float) -> None:
+        self.Frequency_penalty = clamp(frequency_penalty ,0.0,2.0)
+    def Set_Presence_penalty(self,presence_penalty:float) -> None:
+        self.Presence_penalty = clamp(presence_penalty ,0.0,2.0) 
+    def Set_Temp(self,temp:float) -> None:
+        self.Temp = clamp(temp ,0.0,1.0) 
+    def Set_Instruction(self,Instruction:str) -> None: 
+        self.Instructions = Instruction
+        len_Instruction__tokens = token_cut_light.nchars_to_ntokens_approx(len(self.Instruction) ) 
+        if len_Instruction__tokens > 0.8*self.model_maxInputTokens:
+            print(f"Error: Instructions are too long ({len_Instruction__tokens} tokens, while the model's input token maximum is {model_maxInputTokens} for both instructions and prompt.")
+            sys.exit()
+        self.len_Instruction__tokens = len_Instruction__tokens
+    def Set_maxInputTokens(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int, inputToken_safety_margin:float=0.9) -> None:
+        #MC.Set_maxInputTokens(bool(args.max_tokens_in), int(args.max_tokens_in), inputToken_safety_margin)
+        #make a safety margin on the input tokens
+        maxInputTokens = self.model_maxInputTokens - self.len_Instruction__tokens 
+        if there_is_user_advised_max_tokens_in:
+            maxInputTokens = min(maxInputTokens, max(user_advised_max_tokens_in, 25))
+        else:
+            maxInputTokens = int(inputToken_safety_margin * maxInputTokens )
+        self.maxInputTokens = maxInputTokens
+    def Set_maxOutputTokens(self,there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int=0,outputToken_safety_margin:float=2.0) -> None:
+        #Must come after Set_maxInputTokens. better to instead call Set_TokenMaximua
+        maxOutputTokens_default = 20000 #default output limit to prevent run-away
+        maxOutputTokens = maxOutputTokens_default #default output limit to prevent run-away
+        if there_is_user_advised_max_tokens_out:
+            if self.verbosity > Verb.birthDeathMarriage:
+                print("Warning: max_tokens_out is set. Are you sure you want to do that? This doesn't help with anything known but can cause gaps in the output") 
+    
+            maxOutputTokens = abs(user_advised_max_tokens_out)
+            if args.max_tokens_out < 0 and self.verbosity > Verb.birthDeathMarriage:
+                print(f"Negative max_tokens_out feature is obsolte.") 
+            if maxOutputTokens < self.maxInputTokens*outputToken_safety_margin and self.verbosity > Verb.birthDeathMarriage:
+                print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens*outputToken_safety_margin} to prevent periodic truncations in the output.") 
+                maxOutputTokens = max(maxOutputTokens, self.maxInputTokens*outputToken_safety_margin)
+        self.maxOutputTokens = maxOutputTokens
+    def Set_TokenMaxima(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int, inputToken_safety_margin:float,
+            there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int,outputToken_safety_margin:float) -> None:
+        self.Set_maxInputTokens(there_is_user_advised_max_tokens_in, user_advised_max_tokens_in, inputToken_safety_margin)
+        self.Set_maxOutputTokens(there_is_user_advised_max_tokens_out,user_advised_max_tokens_out,outputToken_safety_margin, self.verbosity)
+    def Set_Model(self,modelname:str) -> None:
+        self.Model = modelname
+        if self.Model == "gpt-3.5-turbo":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens  = 4096 #max tokens that the model can handle
+            self.Set_Prices(0.0015, 0.002) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "gpt-3.5-turbo-0613":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens  = 4096 #max tokens that the model can handle
+            self.Set_Prices(0.0015, 0.002) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "gpt-4":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens = 8192 
+            self.Set_Prices(0.03, 0.06) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "gpt-4-32k":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens = 32768 
+            self.Set_Prices(0.06, 0.12) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "gpt-3.5-turbo-16k":
+            self.model_type = Model_Type.CHAT
+            self.model_maxInputTokens = 16384 
+            self.Set_Prices(0.003, 0.004) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+        elif self.Model == "code-davinci-edit-001":
+            self.model_type = Model_Type.EDIT
+            self.model_maxInputTokens = 3000 #4097 #pure guess. Might be 2049
+            self.Set_Prices(0.02, 0.02) #(price_per_1000_input_tokens__USD, price_per_1000_output_tokens__USD)
+            if self.verbosity > Verb.birthDeathMarriage:
+                print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+        elif self.Model == "text-davinci-edit-001":
+            self.model_type = Model_Type.EDIT
+            self.model_maxInputTokens = 3000 #pure guess. Might be 2049
+            self.Set_Prices(0.02,0.02)
+        elif self.Model == "text-davinci-003": #Best quality, longer output, and better consistent instruction-following than these other old models.
+            self.model_type = Model_Type.GPT3
+            self.model_maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
+            self.Set_Prices(0.02,0.02)
+            if self.verbosity > Verb.birthDeathMarriage:
+                print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+        elif self.Model == "text-davinci-002": #Similar capabilities to text-davinci-003 but trained with supervised fine-tuning instead of reinforcement learning
+            self.model_type = Model_Type.GPT3
+            self.model_maxInputTokens = 4097 #https://platform.openai.com/docs/models/gpt-3-5
+            self.Set_Prices(0.02,0.02)
+            if self.verbosity > Verb.birthDeathMarriage:
+                print("Note: This is a relatively expensive model to run at 2 cents/1000 tokens in and out. ChatGPT is 10x cheaper")
+        elif self.Model == "text-curie-001":
+            self.model_type = Model_Type.GPT3
+            self.model_maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
+            self.Set_Prices(0.002,0.002)
+        elif self.Model == "text-babbage-001":
+            self.model_type = Model_Type.GPT3
+            self.model_maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
+            self.Set_Prices(0.0005,0.0005)
+            price_in = 0.0005 #$/1000 tokens see https://openai.com/pricing 
+        elif self.Model == "text-ada-001":
+            self.model_type = Model_Type.GPT3
+            self.model_maxInputTokens = 2049 #https://platform.openai.com/docs/models/gpt-3-5
+            self.Set_Prices(0.0004,0.0004)
+        else:
+            print(f"Error! model {self.Model} not defined in this program") #TODO make this less dumb
+            sys.exit()
+        self.maxInputTokens = self.model_maxInputTokens 
+                    ###############
+    @retry_with_exponential_backoff
+    def Run_OpenAI_LLM__Instruct(self,prompt_body:str) -> tuple[str, int, int]:
+        #responce, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(model )
+        responce = ""
+        ntokens_in = 0
+        ntokens_out = 0
+        if self.model_type == Model_Type.CHAT:
+            conversation = [{"role": "system", "content": self.Instruction}]
+            conversation.append({"role":"user", "content": prompt_body})
+            if self.use_max_tokens_out:
+                result = openai.ChatCompletion.create(
+                        model=self.Model, 
+                        messages=conversation,
+                        temperature= self.Temp,
+                        max_tokens= self.maxOutputTokens,
+                        top_p= self.Top_p,
+                        frequency_penalty= self.Frequency_penalty,
+                        presence_penalty= self.Presence_penalty
+                        )
+                responce = result.choices[0].message.content
+                ntokens_in = result.usage.prompt_tokens
+                ntokens_out = result.usage.completion_tokens
+            else:
+                result = openai.ChatCompletion.create(
+                        model= self.Model, 
+                        messages= conversation,
+                        temperature= self.Temp,
+                        #max_tokens= self.maxOutputTokens,
+                        top_p= self.Top_p,
+                        frequency_penalty= self.Frequency_penalty,
+                        presence_penalty= self.Presence_penalty
+                        )
+                responce = result.choices[0].message.content
+                ntokens_in = result.usage.prompt_tokens
+                ntokens_out = result.usage.completion_tokens
+        elif self.model_type == Model_Type.GPT3:
+            if self.use_max_tokens_out:
+                result = openai.Completion.create(
+                        model= self.Model,
+                        prompt= self.Instruction+"\n\n"+prompt_body,
+                        temperature= self.Temp,
+                        max_tokens= self.maxOutputTokens,
+                        top_p= self.Top_p,
+                        frequency_penalty= self.Frequency_penalty,
+                        presence_penalty= self.Presence_penalty
+                        ).choices[0].text
+                responce = result.choices[0].text
+                ntokens_in = result.usage.prompt_tokens
+                ntokens_out = result.usage.completion_tokens
+            else:
+                result = openai.Completion.create(
+                        model= self.Model,
+                        prompt= self.Instruction+"\n\n"+prompt_body,
+                        temperature= self.Temp,
+                        #max_tokens= self.maxOutputTokens,
+                        top_p= self.Top_p,
+                        frequency_penalty= self.Frequency_penalty,
+                        presence_penalty= self.Presence_penalty
+                        )
+                responce = result.choices[0].text
+                ntokens_in = result.usage.prompt_tokens
+                ntokens_out = result.usage.completion_tokens
+        elif self.model_type == Model_Type.EDIT:
+                if self.use_max_tokens_out:
+                    result = openai.Edit.create( 
+                            model= self.Model,
+                            input= prompt_body,
+                            instruction= self.Instruction,
+                            temperature= self.Temp,
+                            max_tokens= self.maxOutputTokens,
+                            top_p= self.Top_p)
+                    responce = result.choices[0].text
+                    ntokens_in = result.usage.prompt_tokens
+                    ntokens_out = result.usage.completion_tokens
+                else:
+                    result = self. openai.Edit.create(
+                            model= self.Model,
+                            input= prompt_body,
+                            instruction= self.Instruction,
+                            temperature= self.Temp,
+                            #max_tokens= self.maxOutputTokens,
+                            top_p= self.Top_p)
+                    responce = self. result.choices[0].text
+                    ntokens_in = self. result.usage.prompt_tokens
+                    ntokens_out = self. result.usage.completion_tokens
+        else:
+            print("Error: invalid model_type")
+            sys.exit()
+        return responce, ntokens_in, ntokens_out
+                    ###############
+    def Get_PriceEstimate(self, len_prompt__tokens_est:int) -> float:
+        est_cost__USD = self.price_in*(self.len_Instruction__tokens  + len_prompt__tokens_est) + self.price_out*len_prompt__tokens_est 
+        return est_cost__USD
+
+def GetLineRange(lines:list[int],nlines:int) -> tuple[int,int]:
+    #take a tuple of (min_line,max_line) from argparse -ln --lines. Starting line is 0, defaut is -1
+    #and format these into an actual line range (start at 0) that won't run off the end of the file.
+    min_line = min(max(0,lines[0]-1), nlines) #clamp to 0..nlines
+    max_line = lines[1] 
+    if max_line <=0: #handle default case of -1 refering to the end of the file
+        max_lines = nlines
+    else:
+        max_line = min(max(max_line,min_line),nlines)
+    return min_line, max_line
+
+
+def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_provided: bool, cmdln_prompt: str, prompt_type__str, raw_line_range=(-1,-1)) -> str:
+    #raw_line_range is a 2-long tuple of ints, 
+    #Example Use:
+    #Instruction = GetPromptSingleFile(bool(args.file_path), args.file_path, bool(args.prompt_inst), args.prompt_inst, "instruction")
+    Prompt = ""
+    if files_are_provided: 
+            if not os.path.exists(file_path):
+                print(f"Error: {prompt_type__str} file not found: {file_path}")
+                sys.exit()
+            if Prompt != "":
+                    Prompt += '\n'
+            with open(file_path, 'r', encoding=Encoding, errors='ignore') as fin:
+                lines = fin.readlines()
+                min_line, max_line = GetLineRange(raw_line_range,len(lines))
+                Prompt += ''.join(lines[min_line:max_line])
+    if cmdln_prompt_is_provided:
+        if Prompt == "":
+            Prompt += '\n' + cmdln_prompt
+        else:
+            Prompt = cmdln_prompt
+    if Prompt == "":
+        print("Error: {prompt_type__str} prompt is required, none was given. Exiting.")
+        sys.exit()
+    return Prompt
+
+def GetPromptMultipleFiles(files_are_provided:bool, file_paths: list[str], cmdln_prompt_is_provided:bool, cmdln_prompt:str, prompt_type__str:str) -> str:
+    #Example Use:
+    #Instruction = GetPrompt(bool(args.file_paths), args.file_paths, bool(args.prompt_inst), args.prompt_inst, "instruction")
+    Prompt = ""
+    if files_are_provided: 
+        for fname in file_paths:
+            if not os.path.exists(fname):
+                print(f"Error: {prompt_type__str} file not found: {fname}")
+                sys.exit()
+            if Prompt != "":
+                    Prompt += '\n'
+            with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
+                Prompt += fin.read() 
+            """if Prompt == "":
+                with open(fname, 'r', encoding=gu.Encoding, errors='ignore') as fin:
+                    Prompt = fin.read()
+            else: 
+                with open(fname, 'r', encoding=gu.Encoding, errors='ignore') as fin:
+                    Prompt += '\n' + fin.read() """
+    if cmdln_prompt_is_provided:
+        if Prompt == "":
+            Prompt += '\n' + cmdln_prompt
+        else:
+            Prompt = cmdln_prompt
+    if Prompt == "":
+        print("Error: {prompt_type__str} prompt is required, none was given. Exiting.")
+        sys.exit()
+    return Prompt
+
+def GetInstructionPrompt(instruction_files, prompt_inst) -> str:
+    return GetPromptMultipleFiles(bool(instruction_files), instruction_files, bool(prompt_inst), prompt_inst, "instruction")
+
+
+def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> str:
+    #raw_line_range is a 2-long tuple of ints, 
+    return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_inst), prompt_inst, "instruction", raw_line_range)
+
+def get_front_white_idx(text:str) -> str: #tested
+    #ret int indx of front white space
+    l=len(text)
+    for i in range(l):
+        if not text[i].isspace():
+            return i
+    return l
+
+def humanize_seconds(sec:Union[int,float]) -> str:
+    if sec < 2:
+        return f"{sec:.3f}s"
+    elif sec < 90:
+        return f"{sec:.2f} sec"
+    elif sec < 3600:
+        return f"{sec/60:.2f} min"
+    elif sec < 3600:
+        return f"{sec/60:.1f} min"
+    elif sec < 86400:
+        return f"{sec/3600:.1f} hrs"
+    elif sec < 2592000:
+        return f"{sec/86400:.1f} days"
+    elif sec < 31556736:
+        return f"{sec/2635200:.1f} months"
+    else:
+        return f"{sec/31556736:.1f} years"
+
+def get_back_white_idx(text:str, char_strt:int=0) -> int: #tested
+    #ret int indx of back white space, starting from char 
+    l=len(text)
+    L=l-char_strt
+    if L==0:
+        return l
+    for i in range(1,L):
+        if not text[-i].isspace():
+            return l-i+1
+    return char_strt
+
+def rechunk(text:str, len_text:int, chunk_start:int, chunk_end:int) -> int: #TO_TEST
+    #resets the end of the chunk to make the chunks end at sensipble places. 
+    #note that the character at chunk_end is excluded from that chunk
+
+    max_lookback = int((chunk_end - chunk_start)*0.2) #loop back over last 20%
+    file_end_snap_proximity = 20  #risks exceeding max tokens.
+    weight = -0.01 #encourage later items
+
+    #snap to the end of file. This also guards against overflow
+    if len_text - chunk_end < file_end_snap_proximity:
+        return len_text 
+
+    ranking = {}
+    for i in range( max(chunk_start, chunk_end - max_lookback), chunk_end):
+        weight_i = (chunk_end - i)*weight
+        char_i = text[i]
+        char_ip = text[i+1]
+        char_im = text[i-1]
+            
+        if char_i == ' ':
+            if char_im in [".","?","!"] and (char_ip.isupper() or char_ip.isspace()):
+                #end of sentence
+                ranking[i] = 4 + weight_i 
+            elif char_im in [",",";",":"]:
+                #end of clause
+                ranking[i] = 3 + weight_i 
+            else:
+                #common space
+                ranking[i] = 2 + weight_i 
+        elif char_i == '-':
+            ranking[i] = 0.5 + weight_i 
+        elif char_i == '\t':
+            ranking[i] = 3 + weight_i 
+        elif char_i.isspace() and char_im == '}' and not char_ip in ['}','{']:
+            ranking[i] = 5 + weight_i 
+        elif char_i == '\n':
+            ranking[i] = 6 + weight_i 
+        else:
+            ranking[i] = 1 + weight_i 
+
+    chunk_end = max(ranking, key=ranking.get)
+    return chunk_end
+
+"""
+#Main 
+#def run_loop( in_file_name, out_file_name, gtp_instructions,  maxInputTokens = 4095):
+with open(args.out,'w') as fout:
+            if not args.disable:
+                openai.api_key = os.getenv("OPENAI_API_KEY")
+            
+            chunk_start = 0
+            i_chunk = 0
+            t_start0 = time.time()
+            while chunk_start < len_prompt__char:
+
+                if is_test_mode: 
+                    if i_chunk >= args.test:
+                        break
+
+                t_start = time.time()
+
+                    #chunk_end, frac_done = func(chunk_start, Prompt, MC.maxInputTokens, len_prompt__char)
+                chunk_end = chunk_start + token_cut_light.guess_token_truncate_cutint_safer(Prompt[chunk_start:], MC.maxInputTokens)
+                chunk_end = rechunk(Prompt,len_prompt__char, chunk_start, chunk_end)
+                chunk_length__char = chunk_end - chunk_start
+                chunk_length__tokens_est = token_cut_light.nchars_to_ntokens_approx(chunk_length__char )
+                chunk = Prompt[chunk_start : chunk_end]
+                frac_done = chunk_end/len_prompt__char
+                if verbosity >= Verb.normal:
+                    print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
+                if args.echo or verbosity >= Verb.hyperbarf:
+                    print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
+                    print(chunk)
+                if verbosity >= Verb.normal:
+                    print(f"{100*chunk_start/len_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
+                chunk_start = chunk_end
+
+                front_white_idx = get_front_white_idx(chunk)
+                chunk_front_white_space = chunk[:front_white_idx ]
+                chunk_end_white_space = chunk[get_back_white_idx(chunk,front_white_idx):]
+                stripped_chunk = chunk.strip()
+                
+                ntokens_in = 0
+                ntokens_out = 0
+                if args.disable:
+                     altchunk_course = chunk
+                else:
+                    #GPT-3 CALL 
+                    altchunk_course, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM__Instruct(chunk)
+
+                altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
+
+                if is_test_mode and i_chunk >= args.test -1:
+                    altchunk += "\n Output terminated by test option"
+                    if verbosity > Verb.silent:
+                        print("\n Output terminated by test option")
+
+                if verbosity >= Verb.debug: 
+                    altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
+                if ntokens_in > 0 and verbosity != Verb.silent:
+                    prop = abs(ntokens_in-ntokens_out)/ntokens_in
+                    if prop < 0.6:
+                        print(f"Warning: short output. Looks like a truncation error on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
+                    elif prop > 1.5:
+                        print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
+
+                fout.write(altchunk)
+
+                i_chunk += 1
+
+                if i_chunk > expected_n_chunks*1.5: #loop timout, for debug
+                        if verbosity != Verb.silent:
+                            print("Error: Loop ran to chunk",i_chunk, ". That seems too long. Breaking loop.")
+                        break
+
+                total_run_time_so_far = time.time() - t_start0
+                total_expected_run_time = total_run_time_so_far/frac_done 
+                completion_ETA = total_expected_run_time - total_run_time_so_far
+                suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
+                if verbosity >= Verb.normal:
+                    print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
+                if args.echo or verbosity >= Verb.hyperbarf:
+                    print(altchunk + suffix)
+                if is_test_mode and i_chunk >= args.test -1 and verbosity > Verb.silent:
+                    print("\n Output terminated by test option")
+"""
+
+def DoFileDiff(output_file:str, mac_mode:bool, meld_exe_file_path:str, prompt_fname:str, backup_gtp_file:str, verbosity:Verb) -> None:
+    #body input is already copied to prompt_fname
+    os.system("cp "+output_file+" "+backup_gtp_file+" &")
+    
+    if mac_mode:
+        os.system(f"open -a Meld {prompt_fname} {output_file} &")
+    elif os.path.exists(meld_exe_file_path):
+        meld_exe_file_path_callable = meld_exe_file_path.replace(" ", "\ ")
+        os.system(f"{meld_exe_file_path_callable} {prompt_fname} {output_file} &")
+    else:
+        print(f"Meld not found at path {meld_exe_file_path}. Try vimdiff or diff manually")
+    """    try:
+            os.system("vimdiff --version")
+            os.system("vimdiff " + prompt_fname +" "+output_file+" &")
+        except:
+            print("vimdiff not found, resorting to diff :-/ ")
+            os.system("diff " + prompt_fname +" "+output_file+" &")
+            """
+    if verbosity > Verb.birthDeathMarriage:
+        print(f"vimdiff {prompt_fname} {output_file}")
+        print("If you have a meld alias setup:")
+        print(f"meld {prompt_fname} {output_file} &")
+
+def MakeOkRejectFiles(out_file:str, prompt_file:str, output_file_set:bool, prompt_fname:str, backup_gtp_file:str, verbosity:Verb, is_test_mode:bool) -> None:
+    ok_file = "ok"
+    reject_file = "reject"
+    with open(ok_file,'w') as fs:
+        if not output_file_set and not is_test_mode:
+            fs.write(f"mv {out_file} {prompt_file}\n" ) #BUG? what's up here? TODO figure this out
+        fs.write(f"rm {prompt_fname}\n") #the backup copy of the complete prompt
+        fs.write(f"rm {backup_gtp_file}\n")
+        fs.write(f"rm {reject_file}\n")
+        fs.write(f"rm {ok_file}\n")
+    
+    with open(reject_file,'w') as fs:
+        fs.write(f"rm {prompt_fname}\n")
+        fs.write(f"rm {out_file}\n" )
+        fs.write(f"rm {backup_gtp_file}\n")
+        fs.write(f"rm {ok_file}\n")
+        fs.write(f"rm {reject_file}\n")
+
+    if verbosity > Verb.birthDeathMarriage:
+        if args.files: 
+            if output_file_set:
+                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files. Final result is {args.out}.")
+            else:
+                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files, and overwrites the input file {args.out} with the output {args.files}")
+        else:
+            print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files.")
+        print("or reject changes with $ sc {reject_file}")
