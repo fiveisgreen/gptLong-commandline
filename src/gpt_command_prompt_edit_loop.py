@@ -550,9 +550,9 @@ def GetInstructionPrompt(args):
             """
     if args.prompt_inst:
         if Instruction == "":
-            Instruction += '\n' + args.prompt_inst
-        else:
             Instruction = args.prompt_inst
+        else:
+            Instruction += '\n' + args.prompt_inst
     if Instruction == "":
         print("Error: Instruction prompt is required, none was given. Exiting.")
         sys.exit()
