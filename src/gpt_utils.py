@@ -650,11 +650,14 @@ def Process_Chunk(chunk_start:int, body_prompt:str, len_body_prompt__char:int, i
                         print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
 
                 if PC.verbosity >= Verb.normal:
+                    if PC.verbosity >= Verb.debug: 
+                         altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
                     print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
 
                 return altchunk, chunk_start 
 
 def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
+    #Prologue and Epilogue get written to the file before and after the output of the GPT loop. Use this to just operate on a line range.
     with open(PC.output_filename,'w') as fout:
         if Prologue != "":
             fout.write(Prologue)
@@ -670,22 +673,17 @@ def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Contro
         while chunk_start < len_body_prompt__char:
                 if PC.is_test_mode: 
                     if i_chunk >= PC.test_mode_max_chunks:
+                        if PC.verbosity > Verb.silent:
+                             print("\n Output terminated by test option")
                         break
 
                 t_start = time.time()
 
                 altchunk, chunk_start = Process_Chunk(chunk_start, body_prompt, len_body_prompt__char, i_chunk, expected_n_chunks, MC, PC)
-
                 if PC.is_test_mode and i_chunk >= PC.test_mode_max_chunks -1:
                     altchunk += "\n Output terminated by test option"
-                    if PC.verbosity > Verb.silent:
-                        print("\n Output terminated by test option")
-
-                if PC.verbosity >= Verb.debug: 
-                    altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
 
                 fout.write(altchunk)
-
                 i_chunk += 1
 
                 if i_chunk > expected_n_chunks*1.5: #nchunk based loop timout
@@ -701,3 +699,44 @@ def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Contro
                     print(altchunk + suffix)
         if Epilogue != "":
             fout.write(Epilogue)
+
+def Loop_LLM_to_str(body_prompt:str,  MC:Model_Controler, PC:Process_Controler, len_body_prompt__char:int = -1) -> Tuple[str,bool]: 
+        #Returns a LLM output looped over body_promt, and a bool saying if the processes terminated normally
+        if len_body_prompt__char == -1:
+            len_body_prompt__char = len(body_promt)
+        output_str = ""
+        if not PC.disable_openAI_calls:
+            openai.api_key = os.getenv("OPENAI_API_KEY")
+            
+        expected_n_chunks = tcl.count_chunks_approx(len_body_prompt__char, MC.maxInputTokens )
+        chunk_start:int = 0
+        i_chunk:int = 0
+        t_start0 = time.time()
+
+        while chunk_start < len_body_prompt__char:
+                if PC.is_test_mode:  #test_mode chunk limiter
+                    if i_chunk >= PC.test_mode_max_chunks:
+                        output_str += "\n Output terminated by test option"
+                        if PC.verbosity > Verb.silent:
+                             print("\n Output terminated by test option")
+                        return output_str, True
+
+                t_start = time.time()
+
+                altchunk, chunk_start = Process_Chunk(chunk_start, body_prompt, len_body_prompt__char, i_chunk, expected_n_chunks, MC, PC)
+                output_str += altchunk
+                i_chunk += 1
+
+                if i_chunk > expected_n_chunks*1.5: #nchunk based loop timout
+                        if PC.verbosity != Verb.silent:
+                            print(f"Error: Loop ran to chunk {i_chunk} while {expected_n_chunks} chunks were expected. That seems too long. Breaking loop.")
+                        output_str += "\n Error: Output terminated by nchunk limiter"
+                        return output_str, False
+
+                if PC.echo or PC.verbosity >= Verb.hyperbarf:
+                    total_run_time_so_far = time.time() - t_start0
+                    total_expected_run_time = total_run_time_so_far/frac_done 
+                    completion_ETA = total_expected_run_time - total_run_time_so_far
+                    suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
+                    print(altchunk + suffix)
+        return output_str, True
