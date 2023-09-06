@@ -196,8 +196,9 @@ MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputTo
 
 output_file_set = bool(args.out)
 
-Prompt = GetBodyPrompt(args.files, args.lines, args.prompt_body)
-
+Prologue = ""
+Epilogue = ""
+Prologue, Prompt, Epilogue = GetBodyPrompt(args.files, args.lines, args.prompt_body)
 
 prefix, extension = parse_fname(fname)
 if not args.out: 
@@ -206,7 +207,9 @@ backup_gtp_file = prefix+"__gtpRaw"+extension
 prompt_fname = prefix+"__prmoptRaw"+extension 
 
 with open(prompt_fname,'w') as fp:
+    fp.write(Prologue)
     fp.write(Prompt)    
+    fp.write(Epilogue)
 
 len_prompt__char = len(Prompt)
 len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
@@ -233,7 +236,7 @@ if verbosity >= Verb.normal or est_cost__USD > 0.1:
             PC.Set_disable_openAI_calls(True)
 
 #Main Loop and LLM calls:
-Loop_LLM_to_file(Prompt, len_prompt__char, args.out, MC, PC)
+Loop_LLM_to_file(Prompt, len_prompt__char, args.out, MC, PC, Prologue, Epilogue)
 
 DoFileDiff(args.out,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, MC.verbosity)
 

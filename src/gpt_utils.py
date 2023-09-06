@@ -377,12 +377,14 @@ def GetLineRange(lines:list[int],nlines:int) -> tuple[int,int]:
     return min_line, max_line
 
 
-def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_provided: bool, cmdln_prompt: str, prompt_type__str, raw_line_range=(-1,-1)) -> str:
+def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_provided: bool, cmdln_prompt: str, prompt_type__str, raw_line_range=(-1,-1)) -> tuple[str,str,str]:
     #raw_line_range is a 2-long tuple of ints, 
     #Example Use:
     #Instruction = GetPromptSingleFile(bool(args.file_path), args.file_path, bool(args.prompt_inst), args.prompt_inst, "instruction")
+    Prologue = ""
     Prompt = ""
-    if files_are_provided: 
+    Epilogue = ""
+    if file_is_provided: 
             if not os.path.exists(file_path):
                 print(f"Error: {prompt_type__str} file not found: {file_path}")
                 sys.exit()
@@ -391,7 +393,9 @@ def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_
             with open(file_path, 'r', encoding=Encoding, errors='ignore') as fin:
                 lines = fin.readlines()
                 min_line, max_line = GetLineRange(raw_line_range,len(lines))
+                Prologue += ''.join(lines[:min_line])
                 Prompt += ''.join(lines[min_line:max_line])
+                Epilogue += ''.join(lines[max_line:])
     if cmdln_prompt_is_provided:
         if Prompt == "":
             Prompt += '\n' + cmdln_prompt
@@ -400,7 +404,8 @@ def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_
     if Prompt == "":
         print("Error: {prompt_type__str} prompt is required, none was given. Exiting.")
         sys.exit()
-    return Prompt
+   return Prologue, Prompt, Epilogue 
+    
 
 def GetPromptMultipleFiles(files_are_provided:bool, file_paths: list[str], cmdln_prompt_is_provided:bool, cmdln_prompt:str, prompt_type__str:str) -> str:
     #Example Use:
@@ -435,7 +440,7 @@ def GetInstructionPrompt(instruction_files, prompt_inst) -> str:
     return GetPromptMultipleFiles(bool(instruction_files), instruction_files, bool(prompt_inst), prompt_inst, "instruction")
 
 
-def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> str:
+def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> tuple[str,str,str]:
     #raw_line_range is a 2-long tuple of ints, 
     return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_inst), prompt_inst, "body", raw_line_range)
 
@@ -541,9 +546,12 @@ class Process_Controler:
         else:
             self.verbosity = verbosity
 
-def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, out_file_name:str, MC:Model_Controler, PC:Process_Controler) -> None: 
+def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, out_file_name:str, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
     #TODO simplify this! make the interior of the while a function. Also break it into a bunch of functions.
     with open(out_file_name,'w') as fout:
+        if Prologue != "":
+            fout.write(Prologue)
+
         if not PC.disable_openAI_calls:
             openai.api_key = os.getenv("OPENAI_API_KEY")
             
@@ -622,6 +630,8 @@ def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, out_file_name:s
                     print(altchunk + suffix)
                 if PC.is_test_mode and i_chunk >= test_mode_max_chunks -1 and PC.verbosity > Verb.silent:
                     print("\n Output terminated by test option")
+        if Epilogue != "":
+            fout.write(Epilogue)
 
 def DoFileDiff(output_file:str, mac_mode:bool, meld_exe_file_path:str, prompt_fname:str, backup_gtp_file:str, verbosity:Verb) -> None:
     #body input is already copied to prompt_fname
