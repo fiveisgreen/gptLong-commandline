@@ -1,9 +1,6 @@
 import os, sys
-#import json
 import openai
-#import argparse
 import token_cut_light as tcl
-#from gpt import GPT
 import time
 import random
 from typing import Tuple, List, Union
@@ -418,12 +415,6 @@ def GetPromptMultipleFiles(files_are_provided:bool, file_paths: List[str], cmdln
                     Prompt += '\n'
             with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
                 Prompt += fin.read() 
-            """if Prompt == "":
-                with open(fname, 'r', encoding=gu.Encoding, errors='ignore') as fin:
-                    Prompt = fin.read()
-            else: 
-                with open(fname, 'r', encoding=gu.Encoding, errors='ignore') as fin:
-                    Prompt += '\n' + fin.read() """
     if cmdln_prompt_is_provided:
         if Prompt == "":
             Prompt += '\n' + cmdln_prompt
@@ -620,28 +611,7 @@ class Process_Controler:
 
 ##### END PROCESS_CONTROLER ###########
 
-def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
-    #TODO simplify this! make the interior of the while a function. Also break it into a bunch of functions.
-    with open(PC.output_filename,'w') as fout:
-        if Prologue != "":
-            fout.write(Prologue)
-
-        if not PC.disable_openAI_calls:
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-            
-        expected_n_chunks = tcl.count_chunks_approx(len_body_prompt__char, MC.maxInputTokens )
-        chunk_start = 0
-        i_chunk = 0
-        t_start0 = time.time()
-
-        while chunk_start < len_body_prompt__char:
-                if PC.is_test_mode: 
-                    if i_chunk >= PC.test_mode_max_chunks:
-                        break
-
-                t_start = time.time()
-
-                    #chunk_end, frac_done = func(chunk_start, body_prompt, MC.maxInputTokens, len_body_prompt__char)
+def Process_Chunk(chunk_start:int, body_prompt:str, len_body_prompt__char:int, i_chunk:int, expected_n_chunks:int, MC:Model_Controler, PC:Process_Controler):
                 chunk_end = chunk_start + tcl.guess_token_truncate_cutint_safer(body_prompt[chunk_start:], MC.maxInputTokens)
                 chunk_end = rechunk(body_prompt,len_body_prompt__char, chunk_start, chunk_end)
                 chunk_length__char = chunk_end - chunk_start
@@ -672,13 +642,6 @@ def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Contro
 
                 altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
 
-                if PC.is_test_mode and i_chunk >= PC.test_mode_max_chunks -1:
-                    altchunk += "\n Output terminated by test option"
-                    if PC.verbosity > Verb.silent:
-                        print("\n Output terminated by test option")
-
-                if PC.verbosity >= Verb.debug: 
-                    altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
                 if ntokens_in > 0 and PC.verbosity != Verb.silent:
                     prop = abs(ntokens_in-ntokens_out)/ntokens_in
                     if prop < 0.6:
@@ -686,24 +649,55 @@ def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Contro
                     elif prop > 1.5:
                         print(f"Warning: weirdly long output on chunk {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.")
 
+                if PC.verbosity >= Verb.normal:
+                    print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
+
+                return altchunk, chunk_start 
+
+def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
+    with open(PC.output_filename,'w') as fout:
+        if Prologue != "":
+            fout.write(Prologue)
+
+        if not PC.disable_openAI_calls:
+            openai.api_key = os.getenv("OPENAI_API_KEY")
+            
+        expected_n_chunks = tcl.count_chunks_approx(len_body_prompt__char, MC.maxInputTokens )
+        chunk_start:int = 0
+        i_chunk:int = 0
+        t_start0 = time.time()
+
+        while chunk_start < len_body_prompt__char:
+                if PC.is_test_mode: 
+                    if i_chunk >= PC.test_mode_max_chunks:
+                        break
+
+                t_start = time.time()
+
+                altchunk, chunk_start = Process_Chunk(chunk_start, body_prompt, len_body_prompt__char, i_chunk, expected_n_chunks, MC, PC)
+
+                if PC.is_test_mode and i_chunk >= PC.test_mode_max_chunks -1:
+                    altchunk += "\n Output terminated by test option"
+                    if PC.verbosity > Verb.silent:
+                        print("\n Output terminated by test option")
+
+                if PC.verbosity >= Verb.debug: 
+                    altchunk += f"\nEND CHUNK {i_chunk}. Tokens in: {ntokens_in}, tokens out: {ntokens_out}.\n"
+
                 fout.write(altchunk)
 
                 i_chunk += 1
 
-                if i_chunk > expected_n_chunks*1.5: #loop timout, for debug
+                if i_chunk > expected_n_chunks*1.5: #nchunk based loop timout
                         if PC.verbosity != Verb.silent:
-                            print("Error: Loop ran to chunk",i_chunk, ". That seems too long. Breaking loop.")
+                            print(f"Error: Loop ran to chunk {i_chunk} while {expected_n_chunks} chunks were expected. That seems too long. Breaking loop.")
                         break
 
-                total_run_time_so_far = time.time() - t_start0
-                total_expected_run_time = total_run_time_so_far/frac_done 
-                completion_ETA = total_expected_run_time - total_run_time_so_far
-                suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
-                if PC.verbosity >= Verb.normal:
-                    print(f"That was prompt chunk {i_chunk}, it was observed to be {ntokens_in} tokens (apriori estimated was {chunk_length__tokens_est } tokens).\nResponse Chunk {i_chunk} (responce length {ntokens_out} tokens)")
                 if PC.echo or PC.verbosity >= Verb.hyperbarf:
+                    total_run_time_so_far = time.time() - t_start0
+                    total_expected_run_time = total_run_time_so_far/frac_done 
+                    completion_ETA = total_expected_run_time - total_run_time_so_far
+                    suffix = f"Chunk process time {humanize_seconds(time.time() - t_start)}. Total run time: {humanize_seconds(total_run_time_so_far)} out of {humanize_seconds(total_expected_run_time)}. Expected finish in {humanize_seconds(completion_ETA)}\n" 
                     print(altchunk + suffix)
-                if PC.is_test_mode and i_chunk >= test_mode_max_chunks -1 and PC.verbosity > Verb.silent:
-                    print("\n Output terminated by test option")
         if Epilogue != "":
             fout.write(Epilogue)

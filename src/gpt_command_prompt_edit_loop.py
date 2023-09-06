@@ -72,7 +72,7 @@ TODO:
     - [x] Refactor to make verbose into verbosity, an int from 0 .. 9
     - [x] Refactor into classes and functions
     - [ ] Migrate these improvements to the gpt command
-    - [ ] Refactor to make the guts of this a function. 
+    - [x] Refactor to make the guts of this a function. 
     - [x] Add time estimate
     - [x] make old integer parameterizable, and able to run ada, babage etc.
     - [x] Add price estimate and warnings
@@ -98,14 +98,7 @@ TODO:
 
 
 """SETTINGS"""
-version_number__str = "0.5.0"
-
-"""
-gptOut_filename = "gptoutput.txt" #Where the LLM output goes
-backup_gtpOut_filename = "gtpoutput_backup.txt" #default location of a copy of this that won't be touched by meld.
-backup_bodyPrompt_filename = "raw_prompt.txt" #default location of a copy of the full prompt body to this file, which will be used for meld.
-orig_bodyPrompt_filename = "" 
-"""
+version_number__str = "0.6.0"
 
 inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
 #This may be able to go higher. 
@@ -207,23 +200,9 @@ MC.Set_Instruction(\
 MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
                    bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
 
-#TODO: move bools and filenames into Process Controler
-"""
-output_file_is_set = bool(args.out)
-bodyPrompt_file_is_set = bool(args.file)
-if output_file_is_set: 
-    prefix, extension = parse_fname(args.out)
-    gptOut_filename = prefix+"__gtpMeld"+extension #args.out = prefix+"__gtpMeld"+extension 
-    backup_gtpOut_filename = prefix+"__gtpRaw"+extension 
-    backup_bodyPrompt_filename = prefix+"__prmoptRaw"+extension 
-if bodyPrompt_file_is_set:
-    orig_bodyPrompt_filename = args.file
-"""
-
 Prologue, Prompt, Epilogue = \
             GetPromptSingleFile(PC.bodyPrompt_file_is_set, PC.bodyPrompt_filename, \
             bool(args.bodyPrompt_cmdLnStr), args.bodyPrompt_cmdLnStr, "body",  args.lines)
-
 
 with open(PC.backup_bodyPrompt_filename,'w') as fp:
     fp.write(Prologue)
@@ -233,17 +212,17 @@ with open(PC.backup_bodyPrompt_filename,'w') as fp:
 len_prompt__char = len(Prompt)
 len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
 est_cost__USD = MC.Get_PriceEstimate(len_prompt__tokens_est)
-expected_n_chunks = tcl.count_chunks_approx(len_prompt__char, MC.maxInputTokens )
     
 #if args.verbose: #TODO make this a class member
 if PC.verbosity >= Verb.normal:
     print("Model: ",MC.Model)
     print("max_tokens_in: ",MC.maxInputTokens )
     print("max_tokens_out: ",MC.maxOutputTokens )
-    print("Top_p",MC.Top_p)
-    print("Temp",MC.Temp)
+    if PC.verbosity > Verb.normal:
+        print("Top_p",MC.Top_p)
+        print("Temp",MC.Temp)
     print(f"length of prompt body {len_prompt__char} characters, est. {len_prompt__tokens_est} tokens") 
-    print(f"Estimating this will be {expected_n_chunks} chunks")
+    print(f"Estimating this will be {tcl.count_chunks_approx(len_prompt__char, MC.maxInputTokens )} chunks")
 
 #Cost estimate dialogue
 if PC.verbosity >= Verb.normal or est_cost__USD > 0.1:
@@ -258,7 +237,4 @@ if PC.verbosity >= Verb.normal or est_cost__USD > 0.1:
 Loop_LLM_to_file(Prompt, len_prompt__char, MC, PC, Prologue, Epilogue)
 
 PC.DoFileDiff()
-#DoFileDiff(gptOut_filename,mac_mode,meld_exe_file_path,backup_bodyPrompt_filename, backup_gtpOut_filename, PC.verbosity)
-
 PC.MakeOkRejectFiles()
-#MakeOkRejectFiles(gptOut_filename, orig_bodyPrompt_filename, output_file_is_set, bodyPrompt_file_is_set, backup_bodyPrompt_filename, backup_gtpOut_filename, PC.verbosity, PC.is_test_mode)
