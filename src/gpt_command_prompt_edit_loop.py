@@ -1,10 +1,9 @@
 import os, sys
 import openai
 import argparse
-import token_cut_light as tcl
-#from gpt import GPT
 import time
-
+from typing import Tuple
+import token_cut_light as tcl
 from gpt_utils import *
 
 """ #################### USAGE AND EXAMPLES ###########################
@@ -20,8 +19,8 @@ $ gtpe ["instructions"] ["body epilog"] [-f body.txt] [-i instruction1.txt instr
 
 
 positional arguments:
-  prompt_inst           Instruction prompt string. If both this and -i files are give, this goes after the file contents.
-  prompt_body           Body prompt string. If both this and -f files are give, this goes after the file contents.
+  instPrompt_cmdLnStr           Instruction prompt string. If both this and -i files are give, this goes after the file contents.
+  bodyPrompt_cmdLnStr           Body prompt string. If both this and -f files are give, this goes after the file contents.
 
 IO:
 #   Just supply a text string and it becomes appended to the front of the instruction prompt 
@@ -99,8 +98,14 @@ TODO:
 
 
 """SETTINGS"""
-prompt_fname = "raw_prompt.txt" #default. #copy of the full prompt body to this file, which will be used for meld.
-backup_gtp_file = "gtpoutput_backup.txt"
+version_number__str = "0.5.0"
+
+"""
+gptOut_filename = "gptoutput.txt" #Where the LLM output goes
+backup_gtpOut_filename = "gtpoutput_backup.txt" #default location of a copy of this that won't be touched by meld.
+backup_bodyPrompt_filename = "raw_prompt.txt" #default location of a copy of the full prompt body to this file, which will be used for meld.
+orig_bodyPrompt_filename = "" 
+"""
 
 inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
 #This may be able to go higher. 
@@ -111,13 +116,13 @@ outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chu
 def setupArgparse():
     #argparse documentation: https://docs.python.org/3/library/argparse.html
     parser = argparse.ArgumentParser(description='''A basic command line parser for GPT3-edit mode''', epilog = '''Command-line interface written by Anthony Barker, 2022. The main strucutre was written primarily by Shreya Shankar, Bora Uyumazturk, Devin Stein, Gulan, and Michael Lavelle''', prog="gpt_command_prompt")
-    parser.add_argument("prompt_inst", nargs='?', help="Instruction prompt string. If both this and -i files are give, this goes after the file contents.") 
-    parser.add_argument("prompt_body", nargs='?', help="Body prompt string. If both this and -f files are give, this goes after the file contents.") #broken #TODO fix this
+    parser.add_argument("instPrompt_cmdLnStr", nargs='?', help="Instruction prompt string. If both this and -i files are give, this goes after the file contents.") 
+    parser.add_argument("bodyPrompt_cmdLnStr", nargs='?', help="Body prompt string. If both this and -f files are give, this goes after the file contents.") #broken #TODO fix this
 
-    parser.add_argument("-f","--files", help="Prompt file of body text to be edited.") #"files" for historical reasons but there's at most 1 file.
+    parser.add_argument("-f","--file", help="Prompt file of body text to be edited.") #"files" for historical reasons but there's at most 1 file.
     #parser.add_argument("-f","--files", nargs='+',help="Prompt file of body text to be edited.") #"files" for historical reasons but there's at most 1 file. #TODO Make this go
     parser.add_argument('-ln',"--lines", nargs=2, type=int, help="Line number range to consider for body text files. -l [line_from line_to]. Negative numbers go to beginning, end respectively. Line numbers start at 1", default=[-1, -1])
-    parser.add_argument("-i", dest="instruction_files", nargs='+', help="Prompt files, to be used for edit instructions.") 
+    parser.add_argument("-i", dest="instruction_filenames", nargs='+', help="Prompt files, to be used for edit instructions.") 
     parser.add_argument("-o", dest="out", help="Responce output file", default = "gptoutput.txt")  
 
     parser.add_argument('-e', '--edit', action='store_true', help='Uses the text-davinci-edit-001 model, which is older but oriented around text editing')
@@ -140,7 +145,7 @@ def setupArgparse():
     parser.add_argument('-t',"--test", nargs='?', const=2, type=int, help='Put the system in test mode for prompt engineering, which runs a limited number of chunks that can be set here (default is 2). It also turns on some extra printing', default = -1)
         #default is used if no -t option is given. if -t is given with no param, then use const
     parser.add_argument('-d', '--disable', action='store_true', help='Does not send command to GPT-3, used for prompt design and development')
-    parser.add_argument("-v", "--version", action='version', version='%(prog)s 0.5.0') 
+    parser.add_argument("-v", "--version", action='version', version=f'%(prog)s {version_number__str}') 
 
     args = parser.parse_args() 
     return args
@@ -177,11 +182,15 @@ args = setupArgparse()
 if args.old == None:
     args.old = 1
     print("Warning! This should never run. Go fix args.old")
+    assert False
 
 PC = Process_Controler()
 PC.Set_Test_Chunks(args.test)
 PC.Set_disable_openAI_calls(args.disable)
-
+PC.Set_Files(output_file_is_set = bool(args.out),\
+            output_filename = args.out,\
+            bodyPrompt_file_is_set = bool(args.file),\
+            bodyPrompt_filename = args.file)
 
 MC = Model_Controler()
 MC.Set_Verbosity(args.verbose, PC.is_test_mode )
@@ -190,23 +199,33 @@ MC.Set_Frequency_penalty(args.frequency_penalty)
 MC.Set_Presence_penalty(args.presence_penalty)
 MC.Set_Temp(args.temp)
 MC = SetModelFromArgparse(args, MC)
-MC.Set_Instruction(GetInstructionPrompt(args.instruction_files, args.prompt_inst))
+MC.Set_Instruction(\
+    GetPromptMultipleFiles(\
+            bool(args.instruction_filenames), args.instruction_filenames, \
+            bool(args.instPrompt_cmdLnStr),   args.instPrompt_cmdLnStr, "instruction")\
+        )
 MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
                    bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
 
-output_file_set = bool(args.out)
+#TODO: move bools and filenames into Process Controler
+"""
+output_file_is_set = bool(args.out)
+bodyPrompt_file_is_set = bool(args.file)
+if output_file_is_set: 
+    prefix, extension = parse_fname(args.out)
+    gptOut_filename = prefix+"__gtpMeld"+extension #args.out = prefix+"__gtpMeld"+extension 
+    backup_gtpOut_filename = prefix+"__gtpRaw"+extension 
+    backup_bodyPrompt_filename = prefix+"__prmoptRaw"+extension 
+if bodyPrompt_file_is_set:
+    orig_bodyPrompt_filename = args.file
+"""
 
-Prologue = ""
-Epilogue = ""
-Prologue, Prompt, Epilogue = GetBodyPrompt(args.files, args.lines, args.prompt_body)
+Prologue, Prompt, Epilogue = \
+            GetPromptSingleFile(PC.bodyPrompt_file_is_set, PC.bodyPrompt_filename, \
+            bool(args.bodyPrompt_cmdLnStr), args.bodyPrompt_cmdLnStr, "body",  args.lines)
 
-prefix, extension = parse_fname(fname)
-if not args.out: 
-    args.out = prefix+"__gtpMeld"+extension 
-backup_gtp_file = prefix+"__gtpRaw"+extension 
-prompt_fname = prefix+"__prmoptRaw"+extension 
 
-with open(prompt_fname,'w') as fp:
+with open(PC.backup_bodyPrompt_filename,'w') as fp:
     fp.write(Prologue)
     fp.write(Prompt)    
     fp.write(Epilogue)
@@ -217,7 +236,7 @@ est_cost__USD = MC.Get_PriceEstimate(len_prompt__tokens_est)
 expected_n_chunks = tcl.count_chunks_approx(len_prompt__char, MC.maxInputTokens )
     
 #if args.verbose: #TODO make this a class member
-if verbosity >= Verb.normal:
+if PC.verbosity >= Verb.normal:
     print("Model: ",MC.Model)
     print("max_tokens_in: ",MC.maxInputTokens )
     print("max_tokens_out: ",MC.maxOutputTokens )
@@ -227,17 +246,19 @@ if verbosity >= Verb.normal:
     print(f"Estimating this will be {expected_n_chunks} chunks")
 
 #Cost estimate dialogue
-if verbosity >= Verb.normal or est_cost__USD > 0.1:
+if PC.verbosity >= Verb.normal or est_cost__USD > 0.1:
     print(f"Estimated cost of this action: ${est_cost__USD:.2f}")
-    if est_cost__USD > 0.5 and verbosity != Verb.silent:
+    if est_cost__USD > 0.5 and PC.verbosity != Verb.silent:
         answer = input("Would you like to continue? (y/n): ")
         if not (answer.lower() == 'y' or answer.lower == 'yes'):
             print("Disabling OpenAI API calls")
             PC.Set_disable_openAI_calls(True)
 
 #Main Loop and LLM calls:
-Loop_LLM_to_file(Prompt, len_prompt__char, args.out, MC, PC, Prologue, Epilogue)
+Loop_LLM_to_file(Prompt, len_prompt__char, MC, PC, Prologue, Epilogue)
 
-DoFileDiff(args.out,mac_mode,meld_exe_file_path,prompt_fname, backup_gtp_file, MC.verbosity)
+PC.DoFileDiff()
+#DoFileDiff(gptOut_filename,mac_mode,meld_exe_file_path,backup_bodyPrompt_filename, backup_gtpOut_filename, PC.verbosity)
 
-MakeOkRejectFiles(args.out, args.files, output_file_set, prompt_fname, backup_gtp_file, MC.verbosity, PC.is_test_mode)
+PC.MakeOkRejectFiles()
+#MakeOkRejectFiles(gptOut_filename, orig_bodyPrompt_filename, output_file_is_set, bodyPrompt_file_is_set, backup_bodyPrompt_filename, backup_gtpOut_filename, PC.verbosity, PC.is_test_mode)

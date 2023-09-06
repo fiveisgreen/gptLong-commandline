@@ -6,13 +6,11 @@ import token_cut_light as tcl
 #from gpt import GPT
 import time
 import random
+from typing import Tuple, List, Union
 from enum import Flag, auto, IntEnum
 
 """SETTINGS"""
 meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe" #don't use backslashes before spaces. Don't worry about this if you're on mac.
-mac_mode = False
-if sys.platform == "darwin":
-    mac_mode = True
 
 #list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
 Encoding = "utf8" #
@@ -59,7 +57,7 @@ def setupArgparse_gpte():
 def clamp(num, minval, maxval):
 	return max(min(num, maxval),minval)
 
-def parse_fname(fname:str) -> tuple[str,str]: #parse file names, returning the mantissa, and .extension
+def parse_fname(fname:str) -> Tuple[str,str]: #parse file names, returning the mantissa, and .extension
     i_dot = fname.rfind('.')
     return fname[:i_dot], fname[i_dot:]
 
@@ -167,7 +165,7 @@ class Model_Controler:
         self.price_in =  price_per_1000_input_tokens__USD/1000
         self.price_out = price_per_1000_output_tokens__USD/1000
     def Set_Top_p(self,top_p:float) -> None:
-        self.Top_p= clamp(args.top_p ,0.0,1.0) 
+        self.Top_p= clamp(top_p ,0.0,1.0) 
     def Set_Frequency_penalty(self,frequency_penalty:float) -> None:
         self.Frequency_penalty = clamp(frequency_penalty ,0.0,2.0)
     def Set_Presence_penalty(self,presence_penalty:float) -> None:
@@ -208,7 +206,7 @@ class Model_Controler:
     def Set_TokenMaxima(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int, inputToken_safety_margin:float,
             there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int,outputToken_safety_margin:float) -> None:
         self.Set_maxInputTokens(there_is_user_advised_max_tokens_in, user_advised_max_tokens_in, inputToken_safety_margin)
-        self.Set_maxOutputTokens(there_is_user_advised_max_tokens_out,user_advised_max_tokens_out,outputToken_safety_margin, self.verbosity)
+        self.Set_maxOutputTokens(there_is_user_advised_max_tokens_out,user_advised_max_tokens_out,outputToken_safety_margin)
     def Set_Model(self,modelname:str) -> None:
         self.Model = modelname
         if self.Model == "gpt-3.5-turbo":
@@ -272,7 +270,7 @@ class Model_Controler:
         self.maxInputTokens = self.model_maxInputTokens 
                     ###############
     @retry_with_exponential_backoff
-    def Run_OpenAI_LLM__Instruct(self,prompt_body:str) -> tuple[str, int, int]:
+    def Run_OpenAI_LLM__Instruct(self,prompt_body:str) -> Tuple[str, int, int]:
         #responce, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(model )
         responce = ""
         ntokens_in = 0
@@ -365,7 +363,7 @@ class Model_Controler:
         est_cost__USD = self.price_in*(self.len_Instruction__tokens  + len_prompt__tokens_est) + self.price_out*len_prompt__tokens_est 
         return est_cost__USD
 
-def GetLineRange(lines:list[int],nlines:int) -> tuple[int,int]:
+def GetLineRange(lines:List[int],nlines:int) -> Tuple[int,int]:
     #take a tuple of (min_line,max_line) from argparse -ln --lines. Starting line is 0, defaut is -1
     #and format these into an actual line range (start at 0) that won't run off the end of the file.
     min_line = min(max(0,lines[0]-1), nlines) #clamp to 0..nlines
@@ -377,7 +375,7 @@ def GetLineRange(lines:list[int],nlines:int) -> tuple[int,int]:
     return min_line, max_line
 
 
-def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_provided: bool, cmdln_prompt: str, prompt_type__str, raw_line_range=(-1,-1)) -> tuple[str,str,str]:
+def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_provided: bool, cmdln_prompt: str, prompt_type__str, raw_line_range=(-1,-1)) -> Tuple[str,str,str]:
     #raw_line_range is a 2-long tuple of ints, 
     #Example Use:
     #Instruction = GetPromptSingleFile(bool(args.file_path), args.file_path, bool(args.prompt_inst), args.prompt_inst, "instruction")
@@ -404,10 +402,10 @@ def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_
     if Prompt == "":
         print("Error: {prompt_type__str} prompt is required, none was given. Exiting.")
         sys.exit()
-   return Prologue, Prompt, Epilogue 
+    return Prologue, Prompt, Epilogue 
     
 
-def GetPromptMultipleFiles(files_are_provided:bool, file_paths: list[str], cmdln_prompt_is_provided:bool, cmdln_prompt:str, prompt_type__str:str) -> str:
+def GetPromptMultipleFiles(files_are_provided:bool, file_paths: List[str], cmdln_prompt_is_provided:bool, cmdln_prompt:str, prompt_type__str:str) -> str:
     #Example Use:
     #Instruction = GetPrompt(bool(args.file_paths), args.file_paths, bool(args.prompt_inst), args.prompt_inst, "instruction")
     Prompt = ""
@@ -436,13 +434,12 @@ def GetPromptMultipleFiles(files_are_provided:bool, file_paths: list[str], cmdln
         sys.exit()
     return Prompt
 
-def GetInstructionPrompt(instruction_files, prompt_inst) -> str:
-    return GetPromptMultipleFiles(bool(instruction_files), instruction_files, bool(prompt_inst), prompt_inst, "instruction")
+#def GetInstructionPrompt(instruction_files, prompt_inst) -> str:
+#    return GetPromptMultipleFiles(bool(instruction_files), instruction_files, bool(prompt_inst), prompt_inst, "instruction")
 
-
-def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> tuple[str,str,str]:
-    #raw_line_range is a 2-long tuple of ints, 
-    return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_inst), prompt_inst, "body", raw_line_range)
+#def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> Tuple[str,str,str]:
+#    #raw_line_range is a 2-long tuple of ints, 
+#    return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_body), prompt_body, "body", raw_line_range)
 
 def get_front_white_idx(text:str) -> str: #tested
     #ret int indx of front white space
@@ -526,16 +523,26 @@ def rechunk(text:str, len_text:int, chunk_start:int, chunk_end:int) -> int: #TO_
 
 class Process_Controler:
     def __init__(self):
-        self.verbosity=Verb.normal
-        self.disable_openAI_calls = False
-        self.echo = False
-        self.is_test_mode = False
-        self.test_mode_max_chunks = 999 
-    def Set_disable_openAI_calls(disable:bool) -> None:
+        self.disable_openAI_calls:bool = False
+        self.echo:bool = False
+        self.is_test_mode:bool = False
+        self.test_mode_max_chunks:int = 999 
+        self.verbosity:Verb = Verb.normal
+        self.output_file_is_set:bool = False
+        self.bodyPrompt_file_is_set:bool = False
+        self.output_filename:str = "gptoutput.txt"
+        self.backup_output_filename:str = "gtpoutput_noDiff_backup.txt"
+        self.bodyPrompt_filename:str = ""
+        self.backup_bodyPrompt_filename:str = "OrigPromptBackup.txt"
+        self.mac_mode = False
+        if sys.platform == "darwin":
+            self.mac_mode = True
+
+    def Set_disable_openAI_calls(self,disable:bool) -> None:
         self.disable_openAI_calls = disable
-    def Set_Echo(echo:bool) -> None:
+    def Set_Echo(self,echo:bool) -> None:
         self.echo = echo
-    def Set_Test_Chunks(test_mode_max_chunks:int):
+    def Set_Test_Chunks(self,test_mode_max_chunks:int):
         self.is_test_mode = (test_mode_max_chunks >= 0)
         self.test_mode_max_chunks = 999 
     def Set_Verbosity(self, verbosity:Verb) -> None:
@@ -545,41 +552,109 @@ class Process_Controler:
             self.verbosity = Verb.normal
         else:
             self.verbosity = verbosity
+    def Set_Files(self, output_file_is_set : bool, output_filename,
+            bodyPrompt_file_is_set : bool, bodyPrompt_filename) -> None:
+        self.output_file_is_set = output_file_is_set
+        self.output_filename = output_filename
+        self.bodyPrompt_file_is_set = bodyPrompt_file_is_set
+        self.bodyPrompt_filename = bodyPrompt_filename
+        if output_file_is_set:
+            prefix, extension = parse_fname(output_filename)
+            self.backup_output_filename = prefix+"__noDiff_backup"+extension
+            if not bodyPrompt_file_is_set:
+                self.backup_bodyPrompt_filename = prefix+"__OrigPromptBackup"+extension
+        if bodyPrompt_file_is_set:
+            prefix, extension = parse_fname(bodyPrompt_filename)
+            self.bodyPrompt_filename = bodyPrompt_filename
+            self.backup_bodyPrompt_filename = prefix+"__OrigPromptBackup"+extension
 
-def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, out_file_name:str, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
+    def MakeOkRejectFiles(self) -> None: 
+        ok_file:str = "ok"
+        reject_file:str = "reject"
+        overwrite_bodyPrompt_with_GPT_output:bool = self.bodyPrompt_file_is_set and not (self.output_file_is_set or self.is_test_mode)
+        with open(ok_file,'w') as fs:
+            if overwrite_bodyPrompt_with_GPT_output:
+                fs.write(f"mv {self.output_filename} {self.bodyPrompt_filename}\n" ) 
+            fs.write(f"rm {self.backup_output_filename}\n")
+            fs.write(f"rm {self.backup_bodyPrompt_filename}\n") #the backup copy of the complete prompt
+            fs.write(f"rm {reject_file}\n")
+            fs.write(f"rm {ok_file}\n")
+        
+        with open(reject_file,'w') as fs:
+            fs.write(f"rm {self.output_filename}\n" )
+            fs.write(f"rm {self.backup_output_filename}\n")
+            fs.write(f"rm {self.backup_bodyPrompt_filename}\n")
+            fs.write(f"rm {ok_file}\n")
+            fs.write(f"rm {reject_file}\n")
+    
+        if self.verbosity > Verb.birthDeathMarriage:
+            if overwrite_bodyPrompt_with_GPT_output:
+                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files, and overwrites the input file {self.bodyPrompt_filename} with the output {self.output_filename}")
+            else:
+                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files. Final result is {self.output_filename}.")
+            print("or reject changes with $ sc {reject_file}")
+
+    def DoFileDiff(self) -> None:
+        global meld_exe_file_path
+        #body input is already copied to bodyPrompt_filename
+        os.system("cp "+self.output_filename+" "+self.backup_output_filename+" &")
+        
+        if self.mac_mode:
+            os.system(f"open -a Meld {self.bodyPrompt_filename} {self.output_filename} &")
+        elif os.path.exists(meld_exe_file_path):
+            meld_exe_file_path_callable = meld_exe_file_path.replace(" ", "\ ")
+            os.system(f"{meld_exe_file_path_callable} {self.bodyPrompt_filename} {self.output_filename} &")
+        else:
+            print(f"Meld not found at path {meld_exe_file_path}. Try vimdiff or diff manually")
+        """    try:
+                os.system("vimdiff --version")
+                os.system("vimdiff " + self.bodyPrompt_filename +" "+self.output_filename+" &")
+            except:
+                print("vimdiff not found, resorting to diff :-/ ")
+                os.system("diff " + self.bodyPrompt_filename +" "+self.output_filename+" &")
+                """
+        if self.verbosity > Verb.birthDeathMarriage:
+            print(f"vimdiff {self.bodyPrompt_filename} {self.output_filename}")
+            print("If you have a meld alias setup:")
+            print(f"meld {self.bodyPrompt_filename} {self.output_filename} &")
+
+##### END PROCESS_CONTROLER ###########
+
+def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
     #TODO simplify this! make the interior of the while a function. Also break it into a bunch of functions.
-    with open(out_file_name,'w') as fout:
+    with open(PC.output_filename,'w') as fout:
         if Prologue != "":
             fout.write(Prologue)
 
         if not PC.disable_openAI_calls:
             openai.api_key = os.getenv("OPENAI_API_KEY")
             
+        expected_n_chunks = tcl.count_chunks_approx(len_body_prompt__char, MC.maxInputTokens )
         chunk_start = 0
         i_chunk = 0
         t_start0 = time.time()
 
-        while chunk_start < len_prompt__char:
+        while chunk_start < len_body_prompt__char:
                 if PC.is_test_mode: 
                     if i_chunk >= PC.test_mode_max_chunks:
                         break
 
                 t_start = time.time()
 
-                    #chunk_end, frac_done = func(chunk_start, Prompt, MC.maxInputTokens, len_prompt__char)
-                chunk_end = chunk_start + tcl.guess_token_truncate_cutint_safer(Prompt[chunk_start:], MC.maxInputTokens)
-                chunk_end = rechunk(Prompt,len_prompt__char, chunk_start, chunk_end)
+                    #chunk_end, frac_done = func(chunk_start, body_prompt, MC.maxInputTokens, len_body_prompt__char)
+                chunk_end = chunk_start + tcl.guess_token_truncate_cutint_safer(body_prompt[chunk_start:], MC.maxInputTokens)
+                chunk_end = rechunk(body_prompt,len_body_prompt__char, chunk_start, chunk_end)
                 chunk_length__char = chunk_end - chunk_start
                 chunk_length__tokens_est = tcl.nchars_to_ntokens_approx(chunk_length__char )
-                chunk = Prompt[chunk_start : chunk_end]
-                frac_done = chunk_end/len_prompt__char
+                chunk = body_prompt[chunk_start : chunk_end]
+                frac_done = chunk_end/len_body_prompt__char
                 if PC.verbosity >= Verb.normal:
-                    print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total Prompt length: {len_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
+                    print(f"i_chunk {i_chunk} of ~{expected_n_chunks }, chunk start at char {chunk_start} ends at char {chunk_end} (diff: {chunk_length__char} chars, est {chunk_length__tokens_est } tokens). Total body_prompt length: {len_body_prompt__char} characters, moving to {100*frac_done:.2f}% of completion") 
                 if PC.echo or PC.verbosity >= Verb.hyperbarf:
-                    print(f"Prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
+                    print(f"Body prompt Chunk {i_chunk} of ~{expected_n_chunks }:")
                     print(chunk)
                 if PC.verbosity >= Verb.normal:
-                    print(f"{100*chunk_start/len_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
+                    print(f"{100*chunk_start/len_body_prompt__char:.2f}% completed. Processing i_chunk {i_chunk} of ~{expected_n_chunks}...") 
                 chunk_start = chunk_end
 
                 front_white_idx = get_front_white_idx(chunk)
@@ -632,54 +707,3 @@ def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, out_file_name:s
                     print("\n Output terminated by test option")
         if Epilogue != "":
             fout.write(Epilogue)
-
-def DoFileDiff(output_file:str, mac_mode:bool, meld_exe_file_path:str, prompt_fname:str, backup_gtp_file:str, verbosity:Verb) -> None:
-    #body input is already copied to prompt_fname
-    os.system("cp "+output_file+" "+backup_gtp_file+" &")
-    
-    if mac_mode:
-        os.system(f"open -a Meld {prompt_fname} {output_file} &")
-    elif os.path.exists(meld_exe_file_path):
-        meld_exe_file_path_callable = meld_exe_file_path.replace(" ", "\ ")
-        os.system(f"{meld_exe_file_path_callable} {prompt_fname} {output_file} &")
-    else:
-        print(f"Meld not found at path {meld_exe_file_path}. Try vimdiff or diff manually")
-    """    try:
-            os.system("vimdiff --version")
-            os.system("vimdiff " + prompt_fname +" "+output_file+" &")
-        except:
-            print("vimdiff not found, resorting to diff :-/ ")
-            os.system("diff " + prompt_fname +" "+output_file+" &")
-            """
-    if verbosity > Verb.birthDeathMarriage:
-        print(f"vimdiff {prompt_fname} {output_file}")
-        print("If you have a meld alias setup:")
-        print(f"meld {prompt_fname} {output_file} &")
-
-def MakeOkRejectFiles(out_file:str, prompt_file:str, output_file_set:bool, prompt_fname:str, backup_gtp_file:str, verbosity:Verb, is_test_mode:bool) -> None:
-    ok_file = "ok"
-    reject_file = "reject"
-    with open(ok_file,'w') as fs:
-        if not output_file_set and not is_test_mode:
-            fs.write(f"mv {out_file} {prompt_file}\n" ) #BUG? what's up here? TODO figure this out
-        fs.write(f"rm {prompt_fname}\n") #the backup copy of the complete prompt
-        fs.write(f"rm {backup_gtp_file}\n")
-        fs.write(f"rm {reject_file}\n")
-        fs.write(f"rm {ok_file}\n")
-    
-    with open(reject_file,'w') as fs:
-        fs.write(f"rm {prompt_fname}\n")
-        fs.write(f"rm {out_file}\n" )
-        fs.write(f"rm {backup_gtp_file}\n")
-        fs.write(f"rm {ok_file}\n")
-        fs.write(f"rm {reject_file}\n")
-
-    if verbosity > Verb.birthDeathMarriage:
-        if args.files: 
-            if output_file_set:
-                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files. Final result is {args.out}.")
-            else:
-                print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files, and overwrites the input file {args.out} with the output {args.files}")
-        else:
-            print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files.")
-        print("or reject changes with $ sc {reject_file}")
