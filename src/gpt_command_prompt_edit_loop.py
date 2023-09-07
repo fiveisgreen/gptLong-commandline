@@ -108,7 +108,7 @@ outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chu
 #maybe replace with setupArgparse_gpte()
 def setupArgparse():
     #argparse documentation: https://docs.python.org/3/library/argparse.html
-    parser = argparse.ArgumentParser(description='''A basic command line parser for GPT3-edit mode''', epilog = '''Command-line interface written by Anthony Barker, 2022. The main strucutre was written primarily by Shreya Shankar, Bora Uyumazturk, Devin Stein, Gulan, and Michael Lavelle''', prog="gpt_command_prompt")
+    parser = argparse.ArgumentParser(description='''A basic command line parser for GPT3-edit mode''', epilog = '''Command-line interface written by Anthony Barker, 2022. The main strucutre was written primarily by Shreya Shankar, Bora Uyumazturk, Devin Stein, Gulan, and Michael Lavelle''', prog="gpt_command_prompt_edit_long")
     parser.add_argument("instPrompt_cmdLnStr", nargs='?', help="Instruction prompt string. If both this and -i files are give, this goes after the file contents.") 
     parser.add_argument("bodyPrompt_cmdLnStr", nargs='?', help="Body prompt string. If both this and -f files are give, this goes after the file contents.") #broken #TODO fix this
 
@@ -122,9 +122,7 @@ def setupArgparse():
     parser.add_argument('-c', '--code', action='store_true', help='Uses the code-davinci-edit-001 model to optomize code quality. (code-davinci-002 is no longer offered).')
     parser.add_argument('-g4', '--gpt4', action='store_true', help='Uses a GPT-4 model. Usually this is gpt-4, but if combined with -l, gpt-4-32k will be used.')
     parser.add_argument('--old', nargs='?', const=1, type=int, help='Use older models with merged instructions and prompt for speed and cost. OLD: {no_arg = 1:text-davinci-003; 2:text-davinci-002; 3:Curie; 4: Babbage; 5+: Ada} ', default = 0)
-        #default is used if no -t option is given. if -t is given with no param, then use const
     parser.add_argument('-l','--long', dest="long_context", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
-    #parser.add_argument('-16k','--16k', dest="gpt_3point5_turbo_16k", action='store_true', help='Use gpt-3.5-turbo-16k, with 4x the context window of the default gpt-3.5-turbo. This flag overrides -c/--code, -e/--edit, and --old')
     parser.add_argument('-n',"--max_tokens_in", type=int, help="Maximum word count (really token count) of each input prompt chunk. Default is 90%% of the model's limit") 
     parser.add_argument("--max_tokens_out", type=int, help="Maximum word count (really token count) of responce, in order to prevent runaway output. Default is 20,000.") 
     #The point here is to make sure chatGPT doesn't runaway. But this is really dumb since it's most likely to produce unwanted truncation. 
@@ -172,20 +170,16 @@ def SetModelFromArgparse(args, MC):
 
 ######### Input Ingestion ##############
 args = setupArgparse()
-if args.old == None:
-    args.old = 1
-    print("Warning! This should never run. Go fix args.old")
-    assert False
 
 PC = Process_Controler()
 PC.Set_Test_Chunks(args.test)
-PC.Set_disable_openAI_calls(args.disable)
 PC.Set_Files(output_file_is_set = bool(args.out),\
             output_filename = args.out,\
             bodyPrompt_file_is_set = bool(args.file),\
             bodyPrompt_filename = args.file)
 
 MC = Model_Controler()
+MC.Set_disable_openAI_calls(args.disable)
 MC.Set_Verbosity(args.verbose, PC.is_test_mode )
 MC.Set_Top_p(args.top_p)
 MC.Set_Frequency_penalty(args.frequency_penalty)
@@ -193,7 +187,7 @@ MC.Set_Presence_penalty(args.presence_penalty)
 MC.Set_Temp(args.temp)
 MC = SetModelFromArgparse(args, MC)
 MC.Set_Instruction(\
-    GetPromptMultipleFiles(\
+    GetPromptMultipleFiles(False, '',\
             bool(args.instruction_filenames), args.instruction_filenames, \
             bool(args.instPrompt_cmdLnStr),   args.instPrompt_cmdLnStr, "instruction")\
         )
@@ -201,7 +195,7 @@ MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputTo
                    bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
 
 Prologue, Prompt, Epilogue = \
-            GetPromptSingleFile(PC.bodyPrompt_file_is_set, PC.bodyPrompt_filename, \
+            GetPromptSingleFile(False, "", PC.bodyPrompt_file_is_set, PC.bodyPrompt_filename, \
             bool(args.bodyPrompt_cmdLnStr), args.bodyPrompt_cmdLnStr, "body",  args.lines)
 
 with open(PC.backup_bodyPrompt_filename,'w') as fp:
@@ -211,27 +205,14 @@ with open(PC.backup_bodyPrompt_filename,'w') as fp:
 
 len_prompt__char = len(Prompt)
 len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
-est_cost__USD = MC.Get_PriceEstimate(len_prompt__tokens_est)
-    
-#if args.verbose: #TODO make this a class member
-if PC.verbosity >= Verb.normal:
-    print("Model: ",MC.Model)
-    print("max_tokens_in: ",MC.maxInputTokens )
-    print("max_tokens_out: ",MC.maxOutputTokens )
-    if PC.verbosity > Verb.normal:
-        print("Top_p",MC.Top_p)
-        print("Temp",MC.Temp)
+
+if MC.verbosity >= Verb.normal:
+    MC.Print()
     print(f"length of prompt body {len_prompt__char} characters, est. {len_prompt__tokens_est} tokens") 
     print(f"Estimating this will be {tcl.count_chunks_approx(len_prompt__char, MC.maxInputTokens )} chunks")
 
 #Cost estimate dialogue
-if PC.verbosity >= Verb.normal or est_cost__USD > 0.1:
-    print(f"Estimated cost of this action: ${est_cost__USD:.2f}")
-    if est_cost__USD > 0.5 and PC.verbosity != Verb.silent:
-        answer = input("Would you like to continue? (y/n): ")
-        if not (answer.lower() == 'y' or answer.lower == 'yes'):
-            print("Disabling OpenAI API calls")
-            PC.Set_disable_openAI_calls(True)
+MC.Discuss_Pricing_with_User(len_prompt__char)
 
 #Main Loop and LLM calls:
 Loop_LLM_to_file(Prompt, MC, PC, len_prompt__char, Prologue, Epilogue)

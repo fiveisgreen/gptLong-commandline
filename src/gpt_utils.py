@@ -8,6 +8,7 @@ from enum import Flag, auto, IntEnum
 
 """SETTINGS"""
 meld_exe_file_path = "/mnt/c/Program Files/Meld/MeldConsole.exe" #don't use backslashes before spaces. Don't worry about this if you're on mac.
+notepad_exe_file_path = "/mnt/c/windows/system32/notepad.exe"
 
 #list of all encoding options https://docs.python.org/3/library/codecs.html#standard-encodings
 Encoding = "utf8" #
@@ -132,8 +133,10 @@ def retry_with_exponential_backoff(
 
 class Model_Controler:
     def __init__(self):
+        self.disable_openAI_calls:bool = False
         self.model_type = Model_Type.CHAT
         self.use_max_tokens_out = False
+        self.is_instruct_mode = False
         self.maxInputTokens = 2000 #max tokens to feed into the model at once
         self.model_maxInputTokens = self.maxInputTokens #theoretical max the model can take before error
         self.maxOutputTokens = 20000
@@ -143,13 +146,40 @@ class Model_Controler:
         self.Presence_penalty = 0
         self.price_in = 0 #price per input and system token in USD
         self.price_out = 0 #price per input token in USD
-        self.chunk = ""
+        #self.chunk = ""
         self.Model = ""
         self.Instruction = ""
         self.len_Instruction__tokens = 0
         self.verbosity=Verb.normal
         #self.conversation = None
+    def Prompt_Length_Is_Ok(self, len_prompt__char:int) -> Tuple[bool,bool,int]:
+        #returns bools tokens_within_policy_limit, tokens_within_theoretical_limit, estimated_ntokens_in_prompt
+        len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
+            #the token counter is an estimate, so we may make a policy to have the threshold lower than the model maximum
+            #if the length is under this limit, then length_is_ok_by_policy = true
+        length_is_ok_by_policy = len_prompt__tokens_est < self.maxInputTokens
+            #we may also want to know if our policy is to stringent. So also report whether we are under the model limit. 
+            #This signal may be WRONG if the token estimate isn't very good and we may actually be over the limit
+        length_is_ok_theoreticlly = len_prompt__tokens_est<model_maxInputTokens
+        if self.verbosity != Verb.silent and not length_is_ok_by_policy:
+            if length_is_ok_theoreticlly:
+                print(f"Warning! This prompt length has {len_prompt__tokens_est} estimated tokens exceeds the policy limit of {self.maxInputTokens} tokens. It may or may not exceed {self.Model}'s token limit of {self.model_maxInputTokens} tokens.")
+            else:
+                print(f"Error! This prompt length has {len_prompt__tokens_est} estimated tokens exceeds {self.Model}'s token limit of {self.model_maxInputTokens} tokens.")
+        return length_is_ok_by_policy, length_is_ok_theoreticlly, len_prompt__tokens_est
 
+    def Set_disable_openAI_calls(self,disable:bool) -> None:
+        self.disable_openAI_calls = disable
+    def Discuss_Pricing_with_User(self, len_prompt__char:int) -> None:
+        len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
+        est_cost__USD = self.Get_PriceEstimate(len_prompt__tokens_est)
+        if self.verbosity >= Verb.normal or (est_cost__USD > 0.1 and self.verbosity != Verb.silent):
+            print(f"Estimated cost of this action: ${est_cost__USD:.2f}")
+            if est_cost__USD > 0.5 and self.verbosity != Verb.silent:
+                answer = input("Would you like to continue? (y/n): ")
+                if not (answer.lower() == 'y' or answer.lower == 'yes'):
+                    print("Disabling OpenAI API calls")
+                    self.Set_disable_openAI_calls(True)
     def Set_Verbosity(self,verbosity:Verb,is_test_mode = False ) -> None:
         if is_test_mode and verbosity <= Verb.notSet:
             self.verbosity = Verb.test
@@ -170,6 +200,7 @@ class Model_Controler:
     def Set_Temp(self,temp:float) -> None:
         self.Temp = clamp(temp ,0.0,1.0) 
     def Set_Instruction(self,Instruction:str) -> None: 
+        self.is_instruct_mode = is_instruct_mode
         self.Instructions = Instruction
         len_Instruction__tokens = tcl.nchars_to_ntokens_approx(len(self.Instruction) ) 
         if len_Instruction__tokens > 0.8*self.model_maxInputTokens:
@@ -185,6 +216,13 @@ class Model_Controler:
         else:
             maxInputTokens = int(inputToken_safety_margin * maxInputTokens )
         self.maxInputTokens = maxInputTokens
+    def Print(self):
+      print("Model: ",self.Model)
+      print("max_tokens_in: ",self.maxInputTokens )
+      print("max_tokens_out: ",self.maxOutputTokens )
+      if PC.verbosity > Verb.normal:
+          print("Top_p",self.Top_p)
+          print("Temp",self.Temp)
     def Set_maxOutputTokens(self,there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int=0,outputToken_safety_margin:float=2.0) -> None:
         #Must come after Set_maxInputTokens. better to instead call Set_TokenMaximua
         maxOutputTokens_default = 20000 #default output limit to prevent run-away
@@ -267,14 +305,18 @@ class Model_Controler:
         self.maxInputTokens = self.model_maxInputTokens 
                     ###############
     @retry_with_exponential_backoff
-    def Run_OpenAI_LLM__Instruct(self,prompt_body:str) -> Tuple[str, int, int]:
-        #responce, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(model )
+    def Run_OpenAI_LLM(self,prompt_body:str) -> Tuple[str, int, int]:
+        #responce, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(body_prompt)
         responce = ""
         ntokens_in = 0
         ntokens_out = 0
         if self.model_type == Model_Type.CHAT:
-            conversation = [{"role": "system", "content": self.Instruction}]
-            conversation.append({"role":"user", "content": prompt_body})
+            conversation = []
+            if self.is_instruct_mode:
+                conversation = [{"role": "system", "content": self.Instruction}]
+                conversation.append({"role":"user", "content": prompt_body})
+            else:
+                conversation =[{"role":"user", "content": prompt_body}]
             if self.use_max_tokens_out:
                 result = openai.ChatCompletion.create(
                         model=self.Model, 
@@ -302,23 +344,29 @@ class Model_Controler:
                 ntokens_in = result.usage.prompt_tokens
                 ntokens_out = result.usage.completion_tokens
         elif self.model_type == Model_Type.GPT3:
+            Prompt = ""
+            if self.is_instruct_mode:
+                Prompt= self.Instruction+"\n\n"+prompt_body
+            else:
+                Prompt= prompt_body
+
             if self.use_max_tokens_out:
                 result = openai.Completion.create(
                         model= self.Model,
-                        prompt= self.Instruction+"\n\n"+prompt_body,
+                        prompt= Prompt,
                         temperature= self.Temp,
                         max_tokens= self.maxOutputTokens,
                         top_p= self.Top_p,
                         frequency_penalty= self.Frequency_penalty,
                         presence_penalty= self.Presence_penalty
-                        ).choices[0].text
+                        )
                 responce = result.choices[0].text
                 ntokens_in = result.usage.prompt_tokens
                 ntokens_out = result.usage.completion_tokens
             else:
                 result = openai.Completion.create(
                         model= self.Model,
-                        prompt= self.Instruction+"\n\n"+prompt_body,
+                        prompt= Prompt,
                         temperature= self.Temp,
                         #max_tokens= self.maxOutputTokens,
                         top_p= self.Top_p,
@@ -333,7 +381,7 @@ class Model_Controler:
                     result = openai.Edit.create( 
                             model= self.Model,
                             input= prompt_body,
-                            instruction= self.Instruction,
+                            instruction= self.Instruction, #if not is_instruct_mode, should be ""
                             temperature= self.Temp,
                             max_tokens= self.maxOutputTokens,
                             top_p= self.Top_p)
@@ -341,10 +389,10 @@ class Model_Controler:
                     ntokens_in = result.usage.prompt_tokens
                     ntokens_out = result.usage.completion_tokens
                 else:
-                    result = self. openai.Edit.create(
+                    result = self.openai.Edit.create(
                             model= self.Model,
                             input= prompt_body,
-                            instruction= self.Instruction,
+                            instruction= self.Instruction, #if not is_instruct_mode, should be ""
                             temperature= self.Temp,
                             #max_tokens= self.maxOutputTokens,
                             top_p= self.Top_p)
@@ -372,65 +420,66 @@ def GetLineRange(lines:List[int],nlines:int) -> Tuple[int,int]:
     return min_line, max_line
 
 
-def GetPromptSingleFile(file_is_provided: bool, file_path: str, cmdln_prompt_is_provided: bool, cmdln_prompt: str, prompt_type__str, raw_line_range=(-1,-1)) -> Tuple[str,str,str]:
-    #raw_line_range is a 2-long tuple of ints, 
+def GetPromptSingleFile(\
+        prolog_cmdln_prompt_is_provided: bool, prolog_cmdln_prompt: str,\
+        file_is_provided: bool, file_path: str,\
+        epilog_cmdln_prompt_is_provided: bool, epilog_cmdln_prompt: str, prompt_type:str,\
+        raw_line_range=(-1,-1)) -> Tuple[str,str,str]:
     #Example Use:
     #Instruction = GetPromptSingleFile(bool(args.file_path), args.file_path, bool(args.prompt_inst), args.prompt_inst, "instruction")
-    Prologue = ""
+    #raw_line_range is a 2-long tuple of ints, it indicates a range of lines in the file, with line numbers that 
+    #   starts at 1 so that it can be read out of a text editor and line range is inclusive. 
+    #Returns file_prolog, Prompt, file_epilog 
+    #   Prompt: prolog \n file_contents[raw_line_range] \n epilog
+    #   file_prolog: file_contents[0:raw_line_range[0]], don't take the index litterally
+    #   file_epilog: file_contents[raw_line_range[1]:end], don't take the index litterally
+    newline_dict = {True:'',False:'\n'}
+    file_prolog = ""
     Prompt = ""
-    Epilogue = ""
+    file_epilog = ""
+    if prolog_cmdln_prompt_is_provided:
+        Prompt = newline_dict[Prompt == ""] + prolog_cmdln_prompt
     if file_is_provided: 
             if not os.path.exists(file_path):
-                print(f"Error: {prompt_type__str} file not found: {file_path}")
+                print(f"Error: {prompt_type} file not found: {file_path}")
                 sys.exit()
-            if Prompt != "":
-                    Prompt += '\n'
             with open(file_path, 'r', encoding=Encoding, errors='ignore') as fin:
                 lines = fin.readlines()
                 min_line, max_line = GetLineRange(raw_line_range,len(lines))
-                Prologue += ''.join(lines[:min_line])
-                Prompt += ''.join(lines[min_line:max_line])
-                Epilogue += ''.join(lines[max_line:])
-    if cmdln_prompt_is_provided:
-        if Prompt == "":
-            Prompt += '\n' + cmdln_prompt
-        else:
-            Prompt = cmdln_prompt
+                file_prolog += ''.join(lines[:min_line])
+                Prompt += newline_dict[Prompt == ""] + ''.join(lines[min_line:max_line])
+                file_epilog += ''.join(lines[max_line:])
+    if epilog_cmdln_prompt_is_provided:
+        Prompt = newline_dict[Prompt == ""] + epilog_cmdln_prompt
     if Prompt == "":
-        print("Error: {prompt_type__str} prompt is required, none was given. Exiting.")
+        print("Error: {prompt_type} prompt is required, none was given. Exiting.")
         sys.exit()
-    return Prologue, Prompt, Epilogue 
+    return file_prolog, Prompt, file_epilog 
     
 
-def GetPromptMultipleFiles(files_are_provided:bool, file_paths: List[str], cmdln_prompt_is_provided:bool, cmdln_prompt:str, prompt_type__str:str) -> str:
+def GetPromptMultipleFiles(prolog_cmdln_prompt_is_provided:bool, prolog_cmdln_prompt:str,\
+        files_are_provided:bool, file_paths: List[str],\
+        epilog_cmdln_prompt_is_provided:bool, epilog_cmdln_prompt:str, prompt_type:str) -> str:
     #Example Use:
-    #Instruction = GetPrompt(bool(args.file_paths), args.file_paths, bool(args.prompt_inst), args.prompt_inst, "instruction")
+    #Instruction = GetPrompt(False,'',bool(args.file_paths), args.file_paths, bool(args.prompt_inst), args.prompt_inst, "instruction")
+    newline_dict = {True:'',False:'\n'}
     Prompt = ""
+    if prolog_cmdln_prompt_is_provided:
+        Prompt += newline_dict[Prompt == ""] + prolog_cmdln_prompt
     if files_are_provided: 
         for fname in file_paths:
             if not os.path.exists(fname):
-                print(f"Error: {prompt_type__str} file not found: {fname}")
+                print(f"Error: {prompt_type} file not found: {fname}")
                 sys.exit()
-            if Prompt != "":
-                    Prompt += '\n'
             with open(fname, 'r', encoding=Encoding, errors='ignore') as fin:
-                Prompt += fin.read() 
-    if cmdln_prompt_is_provided:
-        if Prompt == "":
-            Prompt += '\n' + cmdln_prompt
-        else:
-            Prompt = cmdln_prompt
+                Prompt += newline_dict[Prompt == ""] + fin.read() 
+    if epilog_cmdln_prompt_is_provided:
+        Prompt += newline_dict[Prompt == ""] + epilog_cmdln_prompt
     if Prompt == "":
-        print("Error: {prompt_type__str} prompt is required, none was given. Exiting.")
+        print("Error: {prompt_type} prompt is required, none was given. Exiting.")
+        #Prompt = "In a bash program that calls GPT-3, the user forgot to input a prompt string. Say something cute to remind the user to     write a prompt string " 
         sys.exit()
     return Prompt
-
-#def GetInstructionPrompt(instruction_files, prompt_inst) -> str:
-#    return GetPromptMultipleFiles(bool(instruction_files), instruction_files, bool(prompt_inst), prompt_inst, "instruction")
-
-#def GetBodyPrompt(file_path, raw_line_range, prompt_body) -> Tuple[str,str,str]:
-#    #raw_line_range is a 2-long tuple of ints, 
-#    return GetPromptSingleFile(bool(file_path), file_path, bool(prompt_body), prompt_body, "body", raw_line_range)
 
 def get_front_white_idx(text:str) -> str: #tested
     #ret int indx of front white space
@@ -514,7 +563,6 @@ def rechunk(text:str, len_text:int, chunk_start:int, chunk_end:int) -> int: #TO_
 
 class Process_Controler:
     def __init__(self):
-        self.disable_openAI_calls:bool = False
         self.echo:bool = False
         self.is_test_mode:bool = False
         self.test_mode_max_chunks:int = 999 
@@ -529,8 +577,6 @@ class Process_Controler:
         if sys.platform == "darwin":
             self.mac_mode = True
 
-    def Set_disable_openAI_calls(self,disable:bool) -> None:
-        self.disable_openAI_calls = disable
     def Set_Echo(self,echo:bool) -> None:
         self.echo = echo
     def Set_Test_Chunks(self,test_mode_max_chunks:int):
@@ -584,7 +630,11 @@ class Process_Controler:
             else:
                 print(f"\nAfter meld/vimdiff, accept changes with \n$ sc {ok_file}\nwhich cleans temp files. Final result is {self.output_filename}.")
             print("or reject changes with $ sc {reject_file}")
-
+    def OpenOutputInTextEditor(self) -> None:
+        if self.mac_mode:
+            os.system(f"open -a textEdit {self.output_filename} &")
+        else:
+            os.system(f"{notepad_exe_file_path} {self.output_filename} &")
     def DoFileDiff(self) -> None:
         global meld_exe_file_path
         #body input is already copied to bodyPrompt_filename
@@ -634,11 +684,11 @@ def Process_Chunk(chunk_start:int, body_prompt:str, len_body_prompt__char:int, i
                 
                 ntokens_in = 0
                 ntokens_out = 0
-                if PC.disable_openAI_calls:
+                if MC.disable_openAI_calls:
                      altchunk_course = chunk
                 else:
                     #LLM CALL 
-                    altchunk_course, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM__Instruct(chunk)
+                    altchunk_course, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(chunk)
 
                 altchunk = chunk_front_white_space +altchunk_course.strip() + chunk_end_white_space 
 
@@ -656,13 +706,15 @@ def Process_Chunk(chunk_start:int, body_prompt:str, len_body_prompt__char:int, i
 
                 return altchunk, chunk_start 
 
-def Loop_LLM_to_file(body_prompt:str, len_body_prompt__char:int, MC:Model_Controler, PC:Process_Controler, Prologue:str = "", Epilogue:str="") -> None: 
+def Loop_LLM_to_file(body_prompt:str, MC:Model_Controler, PC:Process_Controler, len_body_prompt__char:int = -1, Prologue:str = "", Epilogue:str="") -> None: 
     #Prologue and Epilogue get written to the file before and after the output of the GPT loop. Use this to just operate on a line range.
+    if len_body_prompt__char == -1:
+        len_body_prompt__char = len(body_promt)
     with open(PC.output_filename,'w') as fout:
         if Prologue != "":
             fout.write(Prologue)
 
-        if not PC.disable_openAI_calls:
+        if not MC.disable_openAI_calls:
             openai.api_key = os.getenv("OPENAI_API_KEY")
             
         expected_n_chunks = tcl.count_chunks_approx(len_body_prompt__char, MC.maxInputTokens )
@@ -705,7 +757,7 @@ def Loop_LLM_to_str(body_prompt:str,  MC:Model_Controler, PC:Process_Controler, 
         if len_body_prompt__char == -1:
             len_body_prompt__char = len(body_promt)
         output_str = ""
-        if not PC.disable_openAI_calls:
+        if not MC.disable_openAI_calls:
             openai.api_key = os.getenv("OPENAI_API_KEY")
             
         expected_n_chunks = tcl.count_chunks_approx(len_body_prompt__char, MC.maxInputTokens )
