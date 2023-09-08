@@ -137,9 +137,13 @@ class Model_Controler:
         self.model_type = Model_Type.CHAT
         self.use_max_tokens_out = False
         self.is_instruct_mode = False
-        self.maxInputTokens = 2000 #max tokens to feed into the model at once
-        self.model_maxInputTokens = self.maxInputTokens #theoretical max the model can take before error
-        self.maxOutputTokens = 20000
+        self.inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it.
+        self.outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit.  #This may need to go higher
+#This may be able to go higher.
+        self.model_maxInputTokens = 2000 #theoretical max the model can take before error
+        self.maxInputTokens = int(self.inputToken_safety_margin * self.model_maxInputTokens) 
+            #max tokens to feed into the model at once as per policy. This needs to be <= model_maxInputTokens 
+        self.maxOutputTokens = 20000 #What's the concept here?
         self.Temp = 0
         self.Top_p = 1
         self.Frequency_penalty = 0
@@ -152,6 +156,7 @@ class Model_Controler:
         self.len_Instruction__tokens = 0
         self.verbosity=Verb.normal
         #self.conversation = None
+
     def Prompt_Length_Is_Ok(self, len_prompt__char:int) -> Tuple[bool,bool,int]:
         #returns bools tokens_within_policy_limit, tokens_within_theoretical_limit, estimated_ntokens_in_prompt
         len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
@@ -160,7 +165,7 @@ class Model_Controler:
         length_is_ok_by_policy = len_prompt__tokens_est < self.maxInputTokens
             #we may also want to know if our policy is to stringent. So also report whether we are under the model limit. 
             #This signal may be WRONG if the token estimate isn't very good and we may actually be over the limit
-        length_is_ok_theoreticlly = len_prompt__tokens_est<model_maxInputTokens
+        length_is_ok_theoreticlly = len_prompt__tokens_est < self.model_maxInputTokens
         if self.verbosity != Verb.silent and not length_is_ok_by_policy:
             if length_is_ok_theoreticlly:
                 print(f"Warning! This prompt length has {len_prompt__tokens_est} estimated tokens exceeds the policy limit of {self.maxInputTokens} tokens. It may or may not exceed {self.Model}'s token limit of {self.model_maxInputTokens} tokens.")
@@ -170,6 +175,7 @@ class Model_Controler:
 
     def Set_disable_openAI_calls(self,disable:bool) -> None:
         self.disable_openAI_calls = disable
+
     def Discuss_Pricing_with_User(self, len_prompt__char:int) -> None:
         len_prompt__tokens_est = tcl.nchars_to_ntokens_approx(len_prompt__char)
         est_cost__USD = self.Get_PriceEstimate(len_prompt__tokens_est)
@@ -180,6 +186,7 @@ class Model_Controler:
                 if not (answer.lower() == 'y' or answer.lower == 'yes'):
                     print("Disabling OpenAI API calls")
                     self.Set_disable_openAI_calls(True)
+
     def Set_Verbosity(self,verbosity:Verb,is_test_mode = False ) -> None:
         if is_test_mode and verbosity <= Verb.notSet:
             self.verbosity = Verb.test
@@ -187,18 +194,24 @@ class Model_Controler:
             self.verbosity = Verb.normal
         else:
             self.verbosity = verbosity
+
     def Set_Prices(self,price_per_1000_input_tokens__USD:float, price_per_1000_output_tokens__USD:float) -> None:
         #see https://openai.com/pricing
         self.price_in =  price_per_1000_input_tokens__USD/1000
         self.price_out = price_per_1000_output_tokens__USD/1000
+
     def Set_Top_p(self,top_p:float) -> None:
         self.Top_p= clamp(top_p ,0.0,1.0) 
+
     def Set_Frequency_penalty(self,frequency_penalty:float) -> None:
         self.Frequency_penalty = clamp(frequency_penalty ,0.0,2.0)
+
     def Set_Presence_penalty(self,presence_penalty:float) -> None:
         self.Presence_penalty = clamp(presence_penalty ,0.0,2.0) 
+        
     def Set_Temp(self,temp:float) -> None:
         self.Temp = clamp(temp ,0.0,1.0) 
+
     def Set_Instruction(self,Instruction:str) -> None: 
         self.is_instruct_mode = is_instruct_mode
         self.Instructions = Instruction
@@ -207,15 +220,7 @@ class Model_Controler:
             print(f"Error: Instructions are too long ({len_Instruction__tokens} tokens, while the model's input token maximum is {model_maxInputTokens} for both instructions and prompt.")
             sys.exit()
         self.len_Instruction__tokens = len_Instruction__tokens
-    def Set_maxInputTokens(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int, inputToken_safety_margin:float=0.9) -> None:
-        #MC.Set_maxInputTokens(bool(args.max_tokens_in), int(args.max_tokens_in), inputToken_safety_margin)
-        #make a safety margin on the input tokens
-        maxInputTokens = self.model_maxInputTokens - self.len_Instruction__tokens 
-        if there_is_user_advised_max_tokens_in:
-            maxInputTokens = min(maxInputTokens, max(user_advised_max_tokens_in, 25))
-        else:
-            maxInputTokens = int(inputToken_safety_margin * maxInputTokens )
-        self.maxInputTokens = maxInputTokens
+
     def Print(self):
       print("Model: ",self.Model)
       print("max_tokens_in: ",self.maxInputTokens )
@@ -223,25 +228,51 @@ class Model_Controler:
       if PC.verbosity > Verb.normal:
           print("Top_p",self.Top_p)
           print("Temp",self.Temp)
-    def Set_maxOutputTokens(self,there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int=0,outputToken_safety_margin:float=2.0) -> None:
-        #Must come after Set_maxInputTokens. better to instead call Set_TokenMaximua
-        maxOutputTokens_default = 20000 #default output limit to prevent run-away
-        maxOutputTokens = maxOutputTokens_default #default output limit to prevent run-away
+
+    def Set_Token_Safety_Margins(outputToken_safety_margin:float, inputToken_safety_margin:float) -> None:
+        self.outputToken_safety_margin = outputToken_safety_margin
+        self.inputToken_safety_margin  = clamp(inputToken_safety_margin, 0., 1.):
+        #TODO reset maxInputTokens if called.
+        #self.Set_maxInputTokens(False,0) 
+
+    def Set_maxInputTokens(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int) -> None:
+        #MC.Set_maxInputTokens(bool(args.max_tokens_in), int(args.max_tokens_in) ) 
+        #TODO guard against len_Instruction__tokens not being set.
+        if there_is_user_advised_max_tokens_in:
+            self.maxInputTokens = clamp(user_advised_max_tokens_in - self.len_Instruction__tokens, 25,  self.model_maxInputTokens) 
+        else:
+            self.maxInputTokens = int(self.inputToken_safety_margin * self.model_maxInputTokens - self.len_Instruction__tokens 
+) 
+
+    def __Set_maxOutputTokens(self,there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int=0) -> None:
+        #Must come after Set_maxInputTokens. better to instead call Set_TokenMaximua  #TODO
         if there_is_user_advised_max_tokens_out:
+            if user_advised_max_tokens_out == 0:
+                self.maxOutputTokens = max(self.maxOutputTokens, int(self.maxInputTokens * self.outputToken_safety_margin))
+                return
             if self.verbosity > Verb.birthDeathMarriage:
                 print("Warning: max_tokens_out is set. Are you sure you want to do that? This doesn't help with anything known but can cause gaps in the output") 
     
-            maxOutputTokens = abs(user_advised_max_tokens_out)
-            if args.max_tokens_out < 0 and self.verbosity > Verb.birthDeathMarriage:
+            self.maxOutputTokens = abs(user_advised_max_tokens_out)
+            if user_advised_max_tokens_out < 0 and self.verbosity > Verb.birthDeathMarriage:
                 print(f"Negative max_tokens_out feature is obsolte.") 
-            if maxOutputTokens < self.maxInputTokens*outputToken_safety_margin and self.verbosity > Verb.birthDeathMarriage:
-                print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens*outputToken_safety_margin} to prevent periodic truncations in the output.") 
-                maxOutputTokens = max(maxOutputTokens, self.maxInputTokens*outputToken_safety_margin)
-        self.maxOutputTokens = maxOutputTokens
-    def Set_TokenMaxima(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int, inputToken_safety_margin:float,
-            there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int,outputToken_safety_margin:float) -> None:
-        self.Set_maxInputTokens(there_is_user_advised_max_tokens_in, user_advised_max_tokens_in, inputToken_safety_margin)
-        self.Set_maxOutputTokens(there_is_user_advised_max_tokens_out,user_advised_max_tokens_out,outputToken_safety_margin)
+            if self.maxOutputTokens < self.maxInputTokens * self.outputToken_safety_margin: #TODO why am I doing this?
+                # so if the outputTokens max is too small, make it bigger. But the user provided this, so why mess with it?
+                # This is particularly the case if no second argument is provided so you can 
+                if self.verbosity > Verb.birthDeathMarriage:
+                    print(f"Clipping max_tokens_out {args.max_tokens_out} to {maxInputTokens * self.outputToken_safety_margin} to prevent periodic truncations in the output.") 
+                self.maxOutputTokens = max(self.maxOutputTokens, int(self.maxInputTokens * self.outputToken_safety_margin))
+                #TODO why am I doing this?
+        else:
+            pass
+        #TODO this should do something if no user input is set.
+
+
+    def Set_TokenMaxima(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int\
+            there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int) -> None:
+        self.Set_maxInputTokens(there_is_user_advised_max_tokens_in, user_advised_max_tokens_in)
+        self.__Set_maxOutputTokens(there_is_user_advised_max_tokens_out,user_advised_max_tokens_out)
+
     def Set_Model(self,modelname:str) -> None:
         self.Model = modelname
         if self.Model == "gpt-3.5-turbo":
@@ -303,7 +334,7 @@ class Model_Controler:
             print(f"Error! model {self.Model} not defined in this program") #TODO make this less dumb
             sys.exit()
         self.maxInputTokens = self.model_maxInputTokens 
-                    ###############
+
     @retry_with_exponential_backoff
     def Run_OpenAI_LLM(self,prompt_body:str) -> Tuple[str, int, int]:
         #responce, ntokens_in, ntokens_out = MC.Run_OpenAI_LLM(body_prompt)
@@ -403,20 +434,23 @@ class Model_Controler:
             print("Error: invalid model_type")
             sys.exit()
         return responce, ntokens_in, ntokens_out
-                    ###############
+
     def Get_PriceEstimate(self, len_prompt__tokens_est:int) -> float:
         est_cost__USD = self.price_in*(self.len_Instruction__tokens  + len_prompt__tokens_est) + self.price_out*len_prompt__tokens_est 
         return est_cost__USD
 
+                    ########## END Model_Controller Class #####
+
 def GetLineRange(lines:List[int],nlines:int) -> Tuple[int,int]:
     #take a tuple of (min_line,max_line) from argparse -ln --lines. Starting line is 0, defaut is -1
     #and format these into an actual line range (start at 0) that won't run off the end of the file.
-    min_line = min(max(0,lines[0]-1), nlines) #clamp to 0..nlines
+    min_line = clamp(lines[0]-1,0,nlines)
     max_line = lines[1] 
     if max_line <=0: #handle default case of -1 refering to the end of the file
         max_lines = nlines
     else:
-        max_line = min(max(max_line,min_line),nlines)
+        #max_line = min(max(max_line,min_line),nlines)
+        max_line = clamp(max_line, min_line, nlines)
     return min_line, max_line
 
 
