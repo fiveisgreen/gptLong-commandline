@@ -62,11 +62,12 @@ def parse_fname(fname:str) -> Tuple[str,str]: #parse file names, returning the m
 class Verb(IntEnum):
     notSet=-1
     silent=0
-    birthDeathMarriage=1
-    test=2
-    normal=3
-    curious=4
-    debug=5
+    script = 1
+    birthDeathMarriage=2
+    test=3
+    normal=4
+    curious=5
+    debug=6
     hyperbarf=9
 
 class Model_Type(Flag):
@@ -615,7 +616,7 @@ class Process_Controler:
         self.echo = echo
     def Set_Test_Chunks(self,test_mode_max_chunks:int):
         self.is_test_mode = (test_mode_max_chunks >= 0)
-        self.test_mode_max_chunks = 999 
+        self.test_mode_max_chunks = test_mode_max_chunks
     def Set_Verbosity(self, verbosity:Verb) -> None:
         if self.is_test_mode and verbosity <= Verb.notSet:
             self.verbosity = Verb.test

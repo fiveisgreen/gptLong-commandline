@@ -11,13 +11,16 @@ from gpt_utils import *
 #gpt -f file1 file2
 
 #TODO: 
+#- [ ] Make this print repplies to the command prompt
+#- [ ] Make option to turn off the text pop-up
 #- [x] get rid of the GPT library... what's it even for?  Clear out all the junk from the fork
 #- [ ] enable example file
 #- [x] make a sensible integration of chatGPT into the command system
 #- [ ] integrate conversation into the chatGPT option
-#- [ ] integrate older models since they have much higher token rate limits.
-#- [ ] check that max tokens isn't 
-#- [ ] make use of maxInputTokens to prevent crashes from exceeding the token limit
+#- [x] integrate older models since they have much higher token rate limits.
+#- [x] check that max tokens isn't exceeded
+#- [x] make use of maxInputTokens to prevent crashes from exceeding the token limit
+#- [ ] test everything
 
 #todo: make a conversation system -- finally, a use for standrd io
 #automated conversatoin mode
@@ -25,9 +28,9 @@ from gpt_utils import *
 """SETTINGS"""
 version_number__str = "0.3.0"
 
-inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
+#inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it. 
 #This may be able to go higher. 
-outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit.  #This may need to go higher
+#outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit.  #This may need to go higher
 
 #Argparse 
 def setupArgparse():
@@ -94,13 +97,13 @@ def SetModelFromArgparse(args, MC):
 args = setupArgparse()
 
 PC = Process_Controler()
-PC.Set_disable_openAI_calls(args.disable)
 PC.Set_Files(output_file_is_set = bool(args.out),\
             output_filename = args.out,\
             bodyPrompt_file_is_set = bool(args.file),\
             bodyPrompt_filename = args.file) #TODO
 
 MC = Model_Controler()
+MC.Set_disable_openAI_calls(args.disable)
 MC.Set_Verbosity(args.verbose, PC.is_test_mode ) #TODO what to do about echo?
     #verbose |= args.echo or args.disable or args.verbose
 MC.Set_Top_p(args.top_p)
@@ -108,14 +111,16 @@ MC.Set_Frequency_penalty(args.frequency_penalty)
 MC.Set_Presence_penalty(args.presence_penalty)
 MC.Set_Temp(args.temp)
 MC = SetModelFromArgparse(args, MC)
-MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
-                   bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
+#MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
+#                   bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
+MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), 
+                   bool(args.max_tokens_out),to_int(args.max_tokens_out))
 
 Prompt = GetPromptMultipleFiles(\
             bool(args.bodyPrompt_cmdLnStr),   args.bodyPrompt_cmdLnStr,\
             bool(args.file), args.file, \
-            bool(args.bodyPrompt_epilog_cmdLnStr),   args.bodyPrompt_epilog_cmdLnStr, "body")\
-        )
+            bool(args.bodyPrompt_epilog_cmdLnStr),   args.bodyPrompt_epilog_cmdLnStr, "body")
+
 
 len_prompt__char = len(Prompt)
 length_is_ok, length_is_ok_theoreticlly, len_prompt__tokens_est = MC.Prompt_Length_Is_Ok(len_prompt__char)
