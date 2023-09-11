@@ -93,6 +93,7 @@ else
   echo "setenv OPENAI_API_KEY $LICENSE_KEY" >> $RCfile
 endif
 
+######
 if ( `grep -c "alias chatgpt " $RCfile` <= 0 ) then
   echo "alias chatgpt 'python3 `pwd`/src/chatGPT.py'" >> $RCfile
   echo "Command 'chatgpt' is now defined."
@@ -104,6 +105,7 @@ if ( `grep -c "alias chatgtp " $RCfile` <= 0 ) then
   echo "alias chatgtp='python3 `pwd`/src/chatGPT.py'" >> $RCfile
 endif
 
+######
 if ( `grep -c "alias gpt " $RCfile` <= 0) then
   echo "alias gpt 'python3 `pwd`/src/gpt_command_prompt.py'" >> $RCfile
   echo "Command 'gpt' is now defined."
@@ -116,6 +118,7 @@ if ( `grep -c "alias gtp " $RCfile` <= 0) then
   echo "alias gtp 'python3 `pwd`/src/gpt_command_prompt.py'" >> $RCfile
 endif
 
+######
 if ( `grep -c "alias gpte " $RCfile` <= 0) then
   echo "alias gpte 'python3 `pwd`/src/gpt_command_prompt_edit_loop.py'" >> $RCfile
   echo "Command 'gpte' is now defined."
@@ -127,6 +130,15 @@ endif
 if ( `grep -c "alias gtpe " $RCfile` <= 0) then
   echo "alias gtpe 'python3 `pwd`/src/gpt_command_prompt_edit_loop.py'" >> $RCfile
 endif
+######
+if ( `grep -c "alias whisper " $RCfile` <= 0) then
+  echo "alias whisper 'python3 `pwd`/src/whisper.py'" >> $RCfile
+  echo "Command 'whisper' is now defined."
+else
+    echo "whisper command found."
+    grep "alias whisper " $RCfile
+endif
+######
 echo "Reloading shell startup configuration"
 source $RCfile
 
