@@ -1,8 +1,13 @@
 import os
-import openai
-from pydub import AudioSegment
 import tempfile
 import math
+import subprocess
+import importlib
+
+import openai
+#from pydub import AudioSegment #This may be imported later
+#from moviepy.editor import VideoFileClip #This may be imported later
+
 from gpt_utils import Verb
 
 """
@@ -18,6 +23,14 @@ transcript = Whisper_Call(f, Prompt)
 
 Whisper_Max_Chunk_Size__MB = 25
 
+def install_dependency(package_name):
+    try:
+        importlib.import_module(package_name)
+    except ImportError:
+        print(f"{} not found. Installing it...")
+        subprocess.check_call(["pip","install",package_name])
+        print(f"end installation effort for {package_name} package")
+
 def get_Price(audio_length_ms):
     #The price in dollars of transcribing this audio
     audio_length_s = round(audio_length_ms/1000.,0)
@@ -26,11 +39,58 @@ def get_Price(audio_length_ms):
 def is_openAI_audio_format(Format:str)->bool:
     ok_formats = ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"]
     return Format.lower() in ok_formats
+
 def is_pydub_audio_format(Format:str)->bool:
-    ok_formats = [ "mp3", "wav", "ogg", "flac", "aac", "wma", "aiff"]
+    ok_formats = [ "mp3", "wav", "ogg", "flac", "aac", "wma", "aiff","raw","pcm","au"]
+        #[".mp3", ".wav", ".au", ".ogg", flac]
+        #from source code: wav, raw, pcm, and possibly everything accepted by ffmpeg/avconv
+    return (Format.lower() in ok_formats) or is_FFMPEG_audio_format(Format) 
+    #it looks like pydub.AudioSegment.from_file takes raw, pcm, and everything that FFMPEG takes. Not sure though
+
+def is_FFMPEG_audio_format(Format:str)->bool:
+    #generated from $ ffmpeg -formats
+    ok_formats = ["3dostr","3g2","3gp","4xm","a64","aa","aac","ac3","acm","act","adf","adp","ads","adts","adx","aea","afc","aiff","aix","alaw","alias_pix","alsa","amr","amrnb","amrwb","anm","apc","ape","apng","aptx","aptx_hd","aqtitle","asf","asf_o","asf_stream","ass","ast","au","avi","avisynth","avm2","avr","avs","avs2","bethsoftvid","bfi","bfstm","bin","bink","bit","bmp_pipe","bmv","boa","brender_pix","brstm","c93","caca","caf","cavsvideo","cdg","cdxl","chromaprint","cine","codec2","codec2raw","concat","crc","dash","data","daud","dcstr","dds_pipe","dfa","dhav","dirac","dnxhd","dpx_pipe","dsf","dsicin","dss","dts","dtshd","dv","dvbsub","dvbtxt","dvd","dxa","ea","ea_cdata","eac3","epaf","exr_pipe","f32be","f32le","f4v","f64be","f64le","fbdev","ffmetadata","fifo","fifo_test","film_cpk","filmstrip","fits","flac","flic","flv","framecrc","framehash","framemd5","frm","fsb","g722","g723_1","g726","g726le","g729","gdv","genh","gif","gif_pipe","gsm","gxf","h261","h263","h264","hash","hcom","hds","hevc","hls","hnm","ico","idcin","idf","iec61883","iff","ifv","ilbc","image2","image2pipe","ingenient","ipmovie","ipod","ircam","ismv","iss","iv8","ivf","ivr","j2k_pipe","jack","jacosub","jpeg_pipe","jpegls_pipe","jv","kmsgrab","kux","latm","lavfi","libcdio","libdc1394","libgme","libopenmpt","live_flv","lmlm4","loas","lrc","lvf","lxf","m4v","matroska","matroska","webm","md5","mgsts","microdvd","mjpeg","mjpeg_2000","mkvtimestamp_v2","mlp","mlv","mm","mmf","mov","mov","mp4","m4a","3gp","3g2","mj2","mp2","mp3","mp4","mpc","mpc8","mpeg","mpeg1video","mpeg2video","mpegts","mpegtsraw","mpegvideo","mpjpeg","mpl2","mpsub","msf","msnwctcp","mtaf","mtv","mulaw","musx","mv","mvi","mxf","mxf_d10","mxf_opatom","mxg","nc","nistsphere","nsp","nsv","null","nut","nuv","oga","ogg","ogv","oma","openal","opengl","opus","oss","paf","pam_pipe","pbm_pipe","pcx_pipe","pgm_pipe","pgmyuv_pipe","pictor_pipe","pjs","pmp","png_pipe","ppm_pipe","psd_pipe","psp","psxstr","pulse","pva","pvf","qcp","qdraw_pipe","r3d","rawvideo","realtext","redspark","rl2","rm","roq","rpl","rsd","rso","rtp","rtp_mpegts","rtsp","s16be","s16le","s24be","s24le","s32be","s32le","s337m","s8","sami","sap","sbc","sbg","scc","sdl","sdl2","sdp","sdr2","sds","sdx","segment","ser","sgi_pipe","shn","siff","singlejpeg","sln","smjpeg","smk","smoothstreaming","smush","sndio","sol","sox","spdif","spx","srt","stl","stream_segment","ssegment","subviewer","subviewer1","sunrast_pipe","sup","svag","svcd","svg_pipe","swf","tak","tedcaptions","tee","thp","tiertexseq","tiff_pipe","tmv","truehd","tta","tty","txd","ty","u16be","u16le","u24be","u24le","u32be","u32le","u8","uncodedframecrc","v210","v210x","vag","vc1","vc1test","vcd","vidc","video4linux2","v4l2","vividas","vivo","vmd","vob","vobsub","voc","vpk","vplayer","vqf","w64","wav","wc3movie","webm","webm_chunk","webm_dash_manifest","webp","webp_pipe","webvtt","wsaud","wsd","wsvqa","wtv","wv","wve","x11grab","xa","xbin","xmv","xpm_pipe","xv","xvag","xwd_pipe","xwma","yop","yuv4mpegpipe"]
     return Format.lower() in ok_formats
 #currently mp4, mpeg, mpga, m4a, and webm files cannot be looped over since they are not pydub formats 
 #TODO add conversion
+
+def Vet_FileType(self, Format:str, file_size__MB:float):
+    #returns intermediate file type, used for export, as well as a bool saying whether looping can go on.
+    global Whisper_Max_Chunk_Size__MB
+    can_use_pydub_loop = True
+    if is_pydub_audio_format(Format):
+        if is_openAI_audio_format(Format): #happy go lucky land of mp3 and Wav
+            Format_temp = Format
+        else: #need to use export to conver to an openAI type
+            Format_temp = "mp3" 
+    else: #not a 
+        if is_openAI_audio_format(Format): #can't do pydub
+            if file_size__MB < Whisper_Max_Chunk_Size__MB:
+                #we can continue with this audio file since it's small and no looping is needed
+                can_use_pydub_loop  = False
+            else:
+                print(f"Error! Cannot parse {Format} files over {Whisper_Max_Chunk_Size__MB} MB using pydub")
+                sys.exit()
+        else:
+            print(f"Error! Cannot handle this {Format} files")
+            sys.exit()
+    return Format_temp, can_use_pydub_loop 
+"""What we learned: 
+use 
+from moviepy.editor import VideoFileClip
+use for webm, m4a, 
+video_clip = VideoFileClip(input_video_file)
+audio_segment = video_clip.audio
+audo_segment.export(output_mp3_file, format="mp3")
+
+for mp4 inputs:
+from moviepy.editor import AudioFileClip
+video_clip = AudioFileClip(input_mp4_file)
+audio_segment = AudioSegment.from_file(video_clip)
+audio_segment.export(output_mp3_file, format="mp3")
+
+should be able to use with just AudioClip with mp4, 
+"""
 
 def Whisper_Call(binary_file_handle, Prompt, Temp=0, Responce_Format = "text", Language = "en"):
     """
@@ -80,6 +140,7 @@ def replace_extension(filename, new_extensions = "txt"):
         return filename + "." + new_extensions
 
 def __Transcribe(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en',True_fileversion__False_strversion = False) -> str:
+    #TODO vett file paths
     WC = Whisper_Controler()
     WC.Set_Temp(Temp)
     WC.Set_Instruction(Prompt)
@@ -158,15 +219,11 @@ class Whisper_Controler:
         self.Language = lang
     def Set_Input_Safety_Margins( input_safety_margin:float ) -> None:
         self.input_safety_margin = input_safety_margin
-    def Whisper_Call(binary_file_handle):
-        """
-        whisper is limited to 25MB chunks, so have to chunk with pydub:
-        takes the audio file object (not file name) to transcribe, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
-            https://platform.openai.com/docs/api-reference/audio/create#audio/create-prompt
-        guesses for the rest of the API: https://github.com/openai/whisper/blob/248b6cb124225dd263bb9bd32d060b6517e067f8/whisper/transcribe.py#L36-L51
-        """
-        transcript = "lalala"
+    def whisper_call(binary_file_handle):
+        transcript = ""
         if not self.disable:
+            transcript = Whisper_Call(binary_file_handle, self.Instructions, self.Temp, "text", self.Language):
+                """
             OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
             openai.api_key = OPENAI_API_KEY 
             if self.verbosity >= Verb.debug:
@@ -178,29 +235,9 @@ class Whisper_Controler:
                     response_format="text",
                     language=self.Language
                     )
+            """
         return transcript 
 
-    def Vet_FileType(self, Format:str, file_size__MB:float):
-        #returns intermediate file type, used for export, as well as a bool saying whether looping can go on.
-        global Whisper_Max_Chunk_Size__MB
-        can_use_pydub_loop = True
-        if is_pydub_audio_format(Format):
-            if is_openAI_audio_format(Format): #happy go lucky land of mp3 and Wav
-                Format_temp = Format
-            else: #need to use export to conver to an openAI type
-                Format_temp = "mp3" 
-        else: #not a 
-            if is_openAI_audio_format(Format): #can't do pydub
-                if file_size__MB < Whisper_Max_Chunk_Size__MB:
-                    #we can continue with this audio file since it's small and no looping is needed
-                    can_use_pydub_loop  = False
-                else:
-                    print(f"Error! Cannot parse {Format} files over {Whisper_Max_Chunk_Size__MB} MB using pydub")
-                    sys.exit()
-            else:
-                print(f"Error! Cannot handle this {Format} files")
-                sys.exit()
-        return Format_temp, can_use_pydub_loop 
         
     def Transcribe_loop_to_file(input_file_path:str, output_file_path:str, autodisable = True)->None:
         __Transcribe_loop(input_file_path, output_file_path, True)
@@ -227,6 +264,8 @@ class Whisper_Controler:
             else:
                 text.append(f"Initial Prompt: {self.Instructions}\nTranscript:")
         if can_use_pydub_loop:
+            install_dependency("pydub")
+            from pydub import AudioSegment
             audio = AudioSegment.from_file(input_file_path, format=Format)
             audio_length_ms=len(audio)
             Discuss_Pricing_with_User(audio_length_ms, self.verbosity > Verb.script), autodisable)
@@ -246,20 +285,20 @@ class Whisper_Controler:
                 with tempfile.NamedTemporaryFile(suffix="."+Format_temp) as f:
                     segment.export(f.name, format=Format_temp)
                     with open(f.name, "rb") as segment_v2:
-                        text = self.Whisper_Call(segment_v2)
+                        text = self.whisper_call(segment_v2)
                         if True_fileversion__False_strversion:
                             with open(output_file_path,'a') as fp:
                                 fp.write(text + '\n')
                         else:
-                            text.append(self.Whisper_Call(segment_v2))
+                            text.append(self.whisper_call(segment_v2))
         else: #small file that cannot use pydub, no loop
             with open(input_file_path, "rb") as audio:
-                text = self.Whisper_Call(audio)
+                text = self.whisper_call(audio)
                 if True_fileversion__False_strversion:
                     with open(output_file_path,'a') as fp:
                         fp.write(text + '\n')
                 else:
-                    text.append(self.Whisper_Call(segment_v2))
+                    text.append(self.whisper_call(segment_v2))
         if self.verbosity >= Verb.birthDeathMarriage:
             print("done whispering")
         if True_fileversion__False_strversion:
