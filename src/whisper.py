@@ -27,6 +27,8 @@ def setupArgparse():
     parser.add_argument("--temp", type=float, help="temperature parameter. Controls randomness. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Clamped to [0,1]", default = 0) 
     parser.add_argument('--echo', action='store_true', help='Print Prompt as well as responce')
     parser.add_argument('--verbose', nargs='?', const=3, type=int, help='How verbose to print. 0 = silent.',default = -1)
+    parser.add_argument('--silently_spend_lots_of_money', action='store_true', help='By default, in silent mode the user wont be asked about the price, but whisper calls over $5 will automatically disable. If you turn this on, expensive calls will be silently run.')
+
     parser.add_argument('-t',"--test", nargs='?', const=2, type=int, help='Put the system in test mode for prompt engineering, which runs a limited number of audio segments that can be set here (default is 2). It also turns on some extra printing', default = -1)
     parser.add_argument('-d', '--disable', action='store_true', help='Does not send commands to openAI, used for prompt design and development')
     parser.add_argument("-v", "--version", action='version', version=f'%(prog)s {version_number__str}') 
@@ -55,6 +57,7 @@ if args.Prompt_cmdLnStr:
     WC.Set_Instruction(args.Prompt_cmdLnStr)
 WC.Set_Temp(args.temp)
 WC.Set_Echo(args.echo)
+WC.Set_autodisable(not silently_spend_lots_of_money)
 WC.Set_Verbosity(args.verbose, PC.is_test_mode ) 
 WC.Set_Test_Chunks(arsg.test)
 WC.Set_disable_openAI_calls(args.disable)

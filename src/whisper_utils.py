@@ -6,11 +6,16 @@ import math
 from gpt_utils import Verb
 
 """
+#most basics
 file_path = "/mnt/c/Users/abarker/Downloads/OBS_audio.mp3"
 f = open(file_path, "rb")
 Prompt="This is a song. Transcribe both lyrics and non-sence (Woo Woo) words in the song."
 transcript = Whisper_Call(f, Prompt)
+
+##TODO: 
+ - [ ]  add conversions for mp4, mpeg, mpga, m4a, and webm 
 """
+
 Whisper_Max_Chunk_Size__MB = 25
 
 def get_Price(audio_length_ms):
@@ -24,7 +29,8 @@ def is_openAI_audio_format(Format:str)->bool:
 def is_pydub_audio_format(Format:str)->bool:
     ok_formats = [ "mp3", "wav", "ogg", "flac", "aac", "wma", "aiff"]
     return Format.lower() in ok_formats
-
+#currently mp4, mpeg, mpga, m4a, and webm files cannot be looped over since they are not pydub formats 
+#TODO add conversion
 
 def Whisper_Call(binary_file_handle, Prompt, Temp=0, Responce_Format = "text", Language = "en"):
     """
@@ -73,60 +79,23 @@ def replace_extension(filename, new_extensions = "txt"):
     else:
         return filename + "." + new_extensions
 
-def Transcribe_loop_to_str(input_file_path:str, Prompt:str, Temp:float=0.,Language:str='en') -> str:
-    global Whisper_Max_Chunk_Size__MB
-    print(f"{input_file_path} -> {output_file_path}")
-    Format = get_extension(input_file_path).lower()
-    margin = 0.8 #ratio between the target segment size and the theoretical maximum
-    file_size__MB = get_file_size_in_mb(input_file_path)
-    audio = AudioSegment.from_file(input_file_path, format=Format)
-    audio_length_ms=len(audio)
-    print(f"Expected cost of this transcription: ${round(get_Price(audio_length_ms),3)}")
-    dataRate_MB_per_ms = file_size__MB / (audio_length_ms)
-    segment_length_ms = margin*Whisper_Max_Chunk_Size__MB/dataRate_MB_per_ms 
-    text = []
-    for i in range(0, math.ceil(audio_length_ms / segment_length_ms)):
-        print(f"chunk {i+1} of {math.ceil(audio_length_ms / segment_length_ms)}")
-        start = i * segment_length_ms
-        end = min((i + 1) * segment_length_ms, audio_length_ms)
-        segment = audio[start:end]
+def __Transcribe(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en',True_fileversion__False_strversion = False) -> str:
+    WC = Whisper_Controler()
+    WC.Set_Temp(Temp)
+    WC.Set_Instruction(Prompt)
+    WC.Set_Language(Language)
+    if True_fileversion__False_strversion:
+        WC.Transcribe_loop_to_file(input_file_path, output_file_path, autodisable = True)
+    else:
+        return WC.Transcribe_to_str(input_file_path, autodisable = True) 
 
-        #save this to file and immediately reopen it
-        with tempfile.NamedTemporaryFile(suffix="."+Format) as f:
-            segment.export(f.name, format=Format)
+def Transcribe_to_str(input_file_path:str, Prompt:str, Temp:float=0.,Language:str='en') -> str:
+    return __Transcribe_loop(input_file_path, "", Prompt, Temp,Language,False) 
 
-            with open(f.name, "rb") as segment_v2:
-                text.append(Whisper_Call(segment_v2, Prompt, Temp, "text", Language))
-    all_text = '\n'.join(text)
-    print("done whispering")
-    return all_text
+def Transcribe_to_file(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en')->None:
+    __Transcribe_loop(input_file_path, output_file_path, Prompt, Temp,Language,True) 
 
-def Transcribe_loop_to_file(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en')->None:
-    global Whisper_Max_Chunk_Size__MB
-    Format = get_extension(input_file_path).lower()
-    margin = 0.8 #ratio between the target segment size and the theoretical maximum
-    print(f"{input_file_path} -> {output_file_path}")
-    file_size__MB = get_file_size_in_mb(input_file_path)
-    audio = AudioSegment.from_file(input_file_path, format=Format)
-    audio_length_ms=len(audio)
-    print(f"Expected cost of this transcription: ${round(get_Price(audio_length_ms),3)}")
-    dataRate_MB_per_ms = file_size__MB / (audio_length_ms)
-    segment_length_ms = margin*Whisper_Max_Chunk_Size__MB/dataRate_MB_per_ms 
-    for i in range(0, math.ceil(audio_length_ms / segment_length_ms)):
-        print(f"chunk {i+1} of {math.ceil(audio_length_ms / segment_length_ms)}")
-        start = i * segment_length_ms
-        end = min((i + 1) * segment_length_ms, audio_length_ms)
-        segment = audio[start:end]
-
-        with tempfile.NamedTemporaryFile(suffix="."+Format) as f:
-            segment.export(f.name, format=Format)
-            with open(f.name, "rb") as segment_v2:
-                text = Whisper_Call(segment_v2, Prompt, Temp, "text", Language)
-                with open(output_file_path,'a') as fp:
-                    fp.write(text + '\n')
-    print("done whispering")
-
-def Transcribe_loop_to_file_simple(input_file_path:str, Prompt:str,Temp:float=0.,Language:str='en')->None:
+def Transcribe_to_file_simple(input_file_path:str, Prompt:str,Temp:float=0.,Language:str='en')->None:
     #Writes a transcript file to the same filepath as the input, but as a txt file.
     output_file_path= replace_extension(input_file_path)
     Transcribe_loop_to_file(input_file_path, output_file_path, Prompt, Format,Temp,Language)
@@ -141,8 +110,11 @@ class Whisper_Controler:
         self.Language = 'en'
         self.Temp = 0
         self.verbosity=Verb.normal
-        self.price = 0.006 #price in USD per sec of audio transcribed 
+        self.autodisable = True
+        self.price = 0.006 #price in USD per sec of audio transcribed.
         self.echo:bool = False
+    def Set_autodisable(self, autodisable:True)->None:
+        self.autodisable = autodisable
     def Set_Echo(self,echo:bool) -> None:
         self.echo = echo
     def Set_disable_openAI_calls(self,disable:bool) -> None:
@@ -208,7 +180,6 @@ class Whisper_Controler:
                     )
         return transcript 
 
-
     def Vet_FileType(self, Format:str, file_size__MB:float):
         #returns intermediate file type, used for export, as well as a bool saying whether looping can go on.
         global Whisper_Max_Chunk_Size__MB
@@ -233,6 +204,7 @@ class Whisper_Controler:
         
     def Transcribe_loop_to_file(input_file_path:str, output_file_path:str, autodisable = True)->None:
         __Transcribe_loop(input_file_path, output_file_path, True)
+
     def Transcribe_to_str(self, input_file_path:str, autodisable = True) -> str:
         return __Transcribe_loop(input_file_path, "", False)
 
