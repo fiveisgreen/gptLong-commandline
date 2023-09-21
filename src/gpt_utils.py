@@ -232,7 +232,7 @@ class Model_Controler:
 
     def Set_Token_Safety_Margins(outputToken_safety_margin:float, inputToken_safety_margin:float) -> None:
         self.outputToken_safety_margin = outputToken_safety_margin
-        self.inputToken_safety_margin  = clamp(inputToken_safety_margin, 0., 1.):
+        self.inputToken_safety_margin  = clamp(inputToken_safety_margin, 0., 1.)
         #TODO reset maxInputTokens if called.
         #self.Set_maxInputTokens(False,0) 
 
@@ -269,7 +269,7 @@ class Model_Controler:
         #TODO this should do something if no user input is set.
 
 
-    def Set_TokenMaxima(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int\
+    def Set_TokenMaxima(self,there_is_user_advised_max_tokens_in:bool, user_advised_max_tokens_in:int,\
             there_is_user_advised_max_tokens_out:bool,user_advised_max_tokens_out:int) -> None:
         self.Set_maxInputTokens(there_is_user_advised_max_tokens_in, user_advised_max_tokens_in)
         self.__Set_maxOutputTokens(there_is_user_advised_max_tokens_out,user_advised_max_tokens_out)

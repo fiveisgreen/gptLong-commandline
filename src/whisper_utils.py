@@ -8,7 +8,7 @@ import openai
 #from pydub import AudioSegment #This may be imported later
 #from moviepy.editor import VideoFileClip #This may be imported later
 
-from gpt_utils import Verb
+from gpt_utils import Verb, clamp
 
 """
 #most basics
@@ -27,14 +27,9 @@ def install_dependency(package_name):
     try:
         importlib.import_module(package_name)
     except ImportError:
-        print(f"{} not found. Installing it...")
+        print(f"{package_name} not found. Installing it...")
         subprocess.check_call(["pip","install",package_name])
         print(f"end installation effort for {package_name} package")
-
-def get_Price(audio_length_ms):
-    #The price in dollars of transcribing this audio
-    audio_length_s = round(audio_length_ms/1000.,0)
-    return 0.006*audio_length_s  #see https://openai.com/pricing
 
 def is_openAI_audio_format(Format:str)->bool:
     ok_formats = ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"]
@@ -46,6 +41,7 @@ def is_pydub_audio_format(Format:str)->bool:
         #from source code: wav, raw, pcm, and possibly everything accepted by ffmpeg/avconv
     return (Format.lower() in ok_formats) or is_FFMPEG_audio_format(Format) 
     #it looks like pydub.AudioSegment.from_file takes raw, pcm, and everything that FFMPEG takes. Not sure though
+    # see https://github.com/jiaaro/pydub/blob/master/pydub/audio_segment.py
 
 def is_FFMPEG_audio_format(Format:str)->bool:
     #generated from $ ffmpeg -formats
@@ -54,7 +50,7 @@ def is_FFMPEG_audio_format(Format:str)->bool:
 #currently mp4, mpeg, mpga, m4a, and webm files cannot be looped over since they are not pydub formats 
 #TODO add conversion
 
-def Vet_FileType(self, Format:str, file_size__MB:float):
+def Vet_FileType(Format:str, file_size__MB:float):
     #returns intermediate file type, used for export, as well as a bool saying whether looping can go on.
     global Whisper_Max_Chunk_Size__MB
     can_use_pydub_loop = True
@@ -83,13 +79,13 @@ video_clip = VideoFileClip(input_video_file)
 audio_segment = video_clip.audio
 audo_segment.export(output_mp3_file, format="mp3")
 
-for mp4 inputs:
+for mp4 inputs, and m4a:
 from moviepy.editor import AudioFileClip
 video_clip = AudioFileClip(input_mp4_file)
 audio_segment = AudioSegment.from_file(video_clip)
 audio_segment.export(output_mp3_file, format="mp3")
 
-should be able to use with just AudioClip with mp4, 
+should be able to use with just AudioClip with mp4, mpg, mpga (both are mpeg)
 """
 
 def Whisper_Call(binary_file_handle, Prompt, Temp=0, Responce_Format = "text", Language = "en"):
@@ -139,47 +135,25 @@ def replace_extension(filename, new_extensions = "txt"):
     else:
         return filename + "." + new_extensions
 
-def __Transcribe(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en',True_fileversion__False_strversion = False) -> str:
-    #TODO vett file paths
-    WC = Whisper_Controler()
-    WC.Set_Temp(Temp)
-    WC.Set_Instruction(Prompt)
-    WC.Set_Language(Language)
-    if True_fileversion__False_strversion:
-        WC.Transcribe_loop_to_file(input_file_path, output_file_path, autodisable = True)
-    else:
-        return WC.Transcribe_to_str(input_file_path, autodisable = True) 
-
-def Transcribe_to_str(input_file_path:str, Prompt:str, Temp:float=0.,Language:str='en') -> str:
-    return __Transcribe_loop(input_file_path, "", Prompt, Temp,Language,False) 
-
-def Transcribe_to_file(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en')->None:
-    __Transcribe_loop(input_file_path, output_file_path, Prompt, Temp,Language,True) 
-
-def Transcribe_to_file_simple(input_file_path:str, Prompt:str,Temp:float=0.,Language:str='en')->None:
-    #Writes a transcript file to the same filepath as the input, but as a txt file.
-    output_file_path= replace_extension(input_file_path)
-    Transcribe_loop_to_file(input_file_path, output_file_path, Prompt, Format,Temp,Language)
-
 class Whisper_Controler:
     def __init__(self):
         self.disable_openAI_calls:bool = False #ok
+        self.autodisable = True #automatically disable expensive API calls
         self.is_test_mode:bool = False #ok
+        self.echo:bool = False
+        self.verbosity=Verb.normal
         self.test_mode_max_chunks = 999 #ok
         self.input_safety_margin = 0.8 
         self.Instructions = "Transcribe this discussion" #Initial prompt for the transcription
         self.Language = 'en'
         self.Temp = 0
-        self.verbosity=Verb.normal
-        self.autodisable = True
-        self.price = 0.006 #price in USD per sec of audio transcribed.
-        self.echo:bool = False
-    def Set_autodisable(self, autodisable:True)->None:
-        self.autodisable = autodisable
+        self.price = 0.006 #price in USD per min of audio transcribed, rounded to nearest second
     def Set_Echo(self,echo:bool) -> None:
         self.echo = echo
     def Set_disable_openAI_calls(self,disable:bool) -> None:
         self.disable_openAI_calls = disable
+    def Set_autodisable(self, autodisable: bool = True)->None:
+        self.autodisable = autodisable
     def Set_Verbosity(self,verbosity:Verb) -> None:
         if self.is_test_mode and verbosity <= Verb.notSet:
             self.verbosity = Verb.test
@@ -190,11 +164,12 @@ class Whisper_Controler:
     def Set_Test_Chunks(self,test_mode_max_chunks:int):
         self.is_test_mode = (test_mode_max_chunks >= 0)
         self.test_mode_max_chunks = test_mode_max_chunks 
-    def get_Price(audio_length_ms):
+    def get_Price(self,audio_length_ms):
         #The price in dollars of transcribing this audio
         audio_length_s = round(audio_length_ms/1000.,0)
-        return self.price*audio_length_s  #see https://openai.com/pricing
-    def Discuss_Pricing_with_User(self, audio_length_ms:int, enable_user_prompt:bool = True, auto_disable:bool = True) -> None:
+        audio_length_min = audio_length_s/60.
+        return self.price*audio_length_min #see https://openai.com/pricing
+    def Discuss_Pricing_with_User(self, audio_length_ms:int, enable_user_prompt:bool = True) -> None:
         est_cost__USD = self.get_Price(audio_length_ms)
         if self.verbosity >= Verb.birthDeathMarriage or (est_cost__USD > 0.1 and self.verbosity != Verb.silent):
             print(f"Expected cost of this transcription: ${round(get_Price(audio_length_ms),3):.3f}") 
@@ -203,7 +178,7 @@ class Whisper_Controler:
                 if not (answer.lower() == 'y' or answer.lower == 'yes'):
                     print("Disabling OpenAI API calls")
                     self.Set_disable_openAI_calls(True)
-            elif auto_disable and not enable_user_prompt and est_cost__USD > 5:
+            elif self.autodisable and not enable_user_prompt and est_cost__USD > 5:
                 print("Automatically disabling OpenAI API calls")
                 self.Set_disable_openAI_calls(True)
     def Set_Temp(self,temp:float) -> None:
@@ -217,13 +192,13 @@ class Whisper_Controler:
         Spanish (es), Italian (it), English (en), Portugese (pt), German (de); Japanese (ja), Polish (pl), Russian (ru)...
         And for the author's sake, Czech is "cs" """
         self.Language = lang
-    def Set_Input_Safety_Margins( input_safety_margin:float ) -> None:
+    def Set_Input_Safety_Margins(self, input_safety_margin:float ) -> None:
         self.input_safety_margin = input_safety_margin
-    def whisper_call(binary_file_handle):
+    def whisper_call(self,binary_file_handle):
         transcript = ""
-        if not self.disable:
-            transcript = Whisper_Call(binary_file_handle, self.Instructions, self.Temp, "text", self.Language):
-                """
+        if not self.disable_openAI_calls:
+            transcript = Whisper_Call(binary_file_handle, self.Instructions, self.Temp, "text", self.Language)
+            """
             OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
             openai.api_key = OPENAI_API_KEY 
             if self.verbosity >= Verb.debug:
@@ -238,17 +213,16 @@ class Whisper_Controler:
             """
         return transcript 
 
-        
-    def Transcribe_loop_to_file(input_file_path:str, output_file_path:str, autodisable = True)->None:
-        __Transcribe_loop(input_file_path, output_file_path, True)
+    def Transcribe_loop_to_file(self, input_file_path:str, output_file_path:str)->None:
+        self.__Transcribe_loop(input_file_path, output_file_path, True)
 
-    def Transcribe_to_str(self, input_file_path:str, autodisable = True) -> str:
-        return __Transcribe_loop(input_file_path, "", False)
+    def Transcribe_to_str(self, input_file_path:str) -> str:
+        return self.__Transcribe_loop(input_file_path, "", False)
 
-    def __Transcribe_loop(input_file_path:str, output_file_path:str="", True_fileversion__False_strversion = False, autodisable = True)->None:
+    def __Transcribe_loop(self, input_file_path:str, output_file_path:str="", True_fileversion__False_strversion = False)->None:
         global Whisper_Max_Chunk_Size__MB
-        if not os.path.exists(args.file):
-            print(f"Error: file not found: {args.file}")
+        if not os.path.exists(input_file_path):
+            print(f"Error: file not found: {input_file_path}")
             sys.exit()
         file_size__MB = get_file_size_in_mb(input_file_path)
         Format = get_extension(input_file_path).lower()
@@ -268,7 +242,7 @@ class Whisper_Controler:
             from pydub import AudioSegment
             audio = AudioSegment.from_file(input_file_path, format=Format)
             audio_length_ms=len(audio)
-            Discuss_Pricing_with_User(audio_length_ms, self.verbosity > Verb.script), autodisable)
+            self.Discuss_Pricing_with_User(audio_length_ms, self.verbosity > Verb.script)
             dataRate_MB_per_ms = file_size__MB / (audio_length_ms)
             segment_length_ms = self.input_safety_margin*Whisper_Max_Chunk_Size__MB/dataRate_MB_per_ms 
             n_segments = math.ceil(audio_length_ms / segment_length_ms)
@@ -293,16 +267,17 @@ class Whisper_Controler:
                             text.append(self.whisper_call(segment_v2))
         else: #small file that cannot use pydub, no loop
             with open(input_file_path, "rb") as audio:
-                text = self.whisper_call(audio)
+                Text = self.whisper_call(audio)
                 if True_fileversion__False_strversion:
                     with open(output_file_path,'a') as fp:
-                        fp.write(text + '\n')
+                        fp.write(Text + '\n')
                 else:
-                    text.append(self.whisper_call(segment_v2))
+                    text.append(Text)
+                    #text.append(self.whisper_call(segment_v2))
         if self.verbosity >= Verb.birthDeathMarriage:
             print("done whispering")
-        if True_fileversion__False_strversion:
-            return all_text = '\n'.join(text)
+        if not True_fileversion__False_strversion:
+            return '\n'.join(text)
 
 """ #Example use
 filename = "input.mp3"
@@ -325,4 +300,33 @@ with open(output_file,'w') as fp:
 #with open(outFilePath,'w') as fout:
 #    fout.write(transcript )
 
-???END
+
+def __Transcribe(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en',True_fileversion__False_strversion = False) -> str:
+    #TODO vett file paths
+    WC = Whisper_Controler()
+    WC.Set_Temp(Temp)
+    WC.Set_Instruction(Prompt)
+    WC.Set_Language(Language)
+    WC.Set_autodisable(True)
+    if True_fileversion__False_strversion:
+        WC.Transcribe_loop_to_file(input_file_path, output_file_path)
+    else:
+        return WC.Transcribe_to_str(input_file_path) 
+
+def Transcribe_to_str(input_file_path:str, Prompt:str, Temp:float=0.,Language:str='en') -> str:
+    return __Transcribe(input_file_path, "", Prompt, Temp,Language,False) 
+
+def Transcribe_to_file(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en')->None:
+    __Transcribe(input_file_path, output_file_path, Prompt, Temp,Language,True) 
+
+def Transcribe_to_file_autoNameOutput(input_file_path:str, Prompt:str,Temp:float=0.,Language:str='en')->None:
+    #Writes a transcript file to the same filepath as the input, but as a txt file.
+    output_file_path= replace_extension(input_file_path)
+    Transcribe_to_file(input_file_path, output_file_path, Prompt, Temp,Language)
+
+def get_Price(audio_length_ms):
+    #The price in dollars of transcribing this audio
+    return Whisper_Controler().get_Price(audio_length_ms)
+    #audio_length_s = round(audio_length_ms/1000.,0)
+    #return 0.006*audio_length_s  #see https://openai.com/pricing
+

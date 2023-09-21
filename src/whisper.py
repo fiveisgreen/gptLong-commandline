@@ -57,12 +57,12 @@ if args.Prompt_cmdLnStr:
     WC.Set_Instruction(args.Prompt_cmdLnStr)
 WC.Set_Temp(args.temp)
 WC.Set_Echo(args.echo)
-WC.Set_autodisable(not silently_spend_lots_of_money)
-WC.Set_Verbosity(args.verbose, PC.is_test_mode ) 
-WC.Set_Test_Chunks(arsg.test)
+WC.Set_autodisable(not args.silently_spend_lots_of_money)
+WC.Set_Verbosity(args.verbose)
+WC.Set_Test_Chunks(args.test)
 WC.Set_disable_openAI_calls(args.disable)
 ####### Run Whisper ############
-WC.Transcribe_loop_to_file(input_file_path, output_file_path, autodisable = True)
+WC.Transcribe_loop_to_file(input_file_path, output_file_path)
     
 #PC.OpenOutputInTextEditor()
 
