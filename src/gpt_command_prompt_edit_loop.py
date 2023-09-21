@@ -191,8 +191,10 @@ MC.Set_Instruction(\
             bool(args.instruction_filenames), args.instruction_filenames, \
             bool(args.instPrompt_cmdLnStr),   args.instPrompt_cmdLnStr, "instruction")\
         )
-MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
-                   bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
+MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), 
+                   bool(args.max_tokens_out),to_int(args.max_tokens_out))
+#MC.Set_TokenMaxima(bool(args.max_tokens_in), to_int(args.max_tokens_in), inputToken_safety_margin,
+#                   bool(args.max_tokens_out),to_int(args.max_tokens_out),outputToken_safety_margin)
 
 Prologue, Prompt, Epilogue = \
             GetPromptSingleFile(False, "", PC.bodyPrompt_file_is_set, PC.bodyPrompt_filename, \

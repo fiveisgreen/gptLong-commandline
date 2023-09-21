@@ -18,7 +18,10 @@ Prompt="This is a song. Transcribe both lyrics and non-sence (Woo Woo) words in 
 transcript = Whisper_Call(f, Prompt)
 
 ##TODO: 
- - [ ]  add conversions for mp4, mpeg, mpga, m4a, and webm 
+ - [ ] Add calls to local whisper.cpp
+ - [ ] Add Diarization https://github.com/lablab-ai/Whisper-transcription_and_diarization-speaker-identification-
+ - [ ] add conversions for mp4, mpeg, mpga, m4a, and webm (obsolete?)
+ - [ ] test file formats
 """
 
 Whisper_Max_Chunk_Size__MB = 25
@@ -30,6 +33,35 @@ def install_dependency(package_name):
         print(f"{package_name} not found. Installing it...")
         subprocess.check_call(["pip","install",package_name])
         print(f"end installation effort for {package_name} package")
+
+def __Transcribe(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en',True_fileversion__False_strversion = False) -> str:
+    #TODO vett file paths
+    WC = Whisper_Controler()
+    WC.Set_Temp(Temp)
+    WC.Set_Instruction(Prompt)
+    WC.Set_Language(Language)
+    WC.Set_autodisable(True)
+    if True_fileversion__False_strversion:
+        WC.Transcribe_loop_to_file(input_file_path, output_file_path)
+    else:
+        return WC.Transcribe_to_str(input_file_path) 
+
+def Transcribe_to_str(input_file_path:str, Prompt:str, Temp:float=0.,Language:str='en') -> str:
+    return __Transcribe(input_file_path, "", Prompt, Temp,Language,False) 
+
+def Transcribe_to_file(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en')->None:
+    __Transcribe(input_file_path, output_file_path, Prompt, Temp,Language,True) 
+
+def Transcribe_to_file_autoNameOutput(input_file_path:str, Prompt:str,Temp:float=0.,Language:str='en')->None:
+    #Writes a transcript file to the same filepath as the input, but as a txt file.
+    output_file_path= replace_extension(input_file_path)
+    Transcribe_to_file(input_file_path, output_file_path, Prompt, Temp,Language)
+
+def get_Price(audio_length_ms):
+    #The price in dollars of transcribing this audio
+    return Whisper_Controler().get_Price(audio_length_ms)
+    #audio_length_s = round(audio_length_ms/1000.,0)
+    #return 0.006*audio_length_s  #see https://openai.com/pricing
 
 def is_openAI_audio_format(Format:str)->bool:
     ok_formats = ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"]
@@ -300,33 +332,4 @@ with open(output_file,'w') as fp:
 #with open(outFilePath,'w') as fout:
 #    fout.write(transcript )
 
-
-def __Transcribe(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en',True_fileversion__False_strversion = False) -> str:
-    #TODO vett file paths
-    WC = Whisper_Controler()
-    WC.Set_Temp(Temp)
-    WC.Set_Instruction(Prompt)
-    WC.Set_Language(Language)
-    WC.Set_autodisable(True)
-    if True_fileversion__False_strversion:
-        WC.Transcribe_loop_to_file(input_file_path, output_file_path)
-    else:
-        return WC.Transcribe_to_str(input_file_path) 
-
-def Transcribe_to_str(input_file_path:str, Prompt:str, Temp:float=0.,Language:str='en') -> str:
-    return __Transcribe(input_file_path, "", Prompt, Temp,Language,False) 
-
-def Transcribe_to_file(input_file_path:str, output_file_path:str, Prompt:str, Temp:float=0.,Language:str='en')->None:
-    __Transcribe(input_file_path, output_file_path, Prompt, Temp,Language,True) 
-
-def Transcribe_to_file_autoNameOutput(input_file_path:str, Prompt:str,Temp:float=0.,Language:str='en')->None:
-    #Writes a transcript file to the same filepath as the input, but as a txt file.
-    output_file_path= replace_extension(input_file_path)
-    Transcribe_to_file(input_file_path, output_file_path, Prompt, Temp,Language)
-
-def get_Price(audio_length_ms):
-    #The price in dollars of transcribing this audio
-    return Whisper_Controler().get_Price(audio_length_ms)
-    #audio_length_s = round(audio_length_ms/1000.,0)
-    #return 0.006*audio_length_s  #see https://openai.com/pricing
 

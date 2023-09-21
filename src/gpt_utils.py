@@ -137,7 +137,7 @@ class Model_Controler:
         self.disable_openAI_calls:bool = False
         self.model_type = Model_Type.CHAT
         self.use_max_tokens_out = False
-        self.is_instruct_mode = False
+        self.is_instruct_mode = False #True iff instructions have been supplied.
         self.inputToken_safety_margin = 0.9 #This is a buffer factor between how many tokens the model can possibly take in and how many we feed into it.
         self.outputToken_safety_margin = 1.3 #This is a buffer factor between the maximum chunk input tokens and the minimum allowed output token limit.  #This may need to go higher
 #This may be able to go higher.
@@ -214,7 +214,7 @@ class Model_Controler:
         self.Temp = clamp(temp ,0.0,1.0) 
 
     def Set_Instruction(self,Instruction:str) -> None: 
-        self.is_instruct_mode = is_instruct_mode
+        self.is_instruct_mode = True #Says that instructions have been supplied
         self.Instructions = Instruction
         len_Instruction__tokens = tcl.nchars_to_ntokens_approx(len(self.Instruction) ) 
         if len_Instruction__tokens > 0.8*self.model_maxInputTokens:
@@ -226,7 +226,7 @@ class Model_Controler:
       print("Model: ",self.Model)
       print("max_tokens_in: ",self.maxInputTokens )
       print("max_tokens_out: ",self.maxOutputTokens )
-      if PC.verbosity > Verb.normal:
+      if self.verbosity > Verb.normal:
           print("Top_p",self.Top_p)
           print("Temp",self.Temp)
 
@@ -409,11 +409,14 @@ class Model_Controler:
                 ntokens_in = result.usage.prompt_tokens
                 ntokens_out = result.usage.completion_tokens
         elif self.model_type == Model_Type.EDIT:
+                instr = ""
+                if self.is_instruct_mode:
+                    instr = self.Instruction
                 if self.use_max_tokens_out:
                     result = openai.Edit.create( 
                             model= self.Model,
                             input= prompt_body,
-                            instruction= self.Instruction, #if not is_instruct_mode, should be ""
+                            instruction= instr,
                             temperature= self.Temp,
                             max_tokens= self.maxOutputTokens,
                             top_p= self.Top_p)
@@ -424,7 +427,7 @@ class Model_Controler:
                     result = self.openai.Edit.create(
                             model= self.Model,
                             input= prompt_body,
-                            instruction= self.Instruction, #if not is_instruct_mode, should be ""
+                            instruction= instr,
                             temperature= self.Temp,
                             #max_tokens= self.maxOutputTokens,
                             top_p= self.Top_p)
