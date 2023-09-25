@@ -424,7 +424,7 @@ class Model_Controler:
                     ntokens_in = result.usage.prompt_tokens
                     ntokens_out = result.usage.completion_tokens
                 else:
-                    result = self.openai.Edit.create(
+                    result = openai.Edit.create(
                             model= self.Model,
                             input= prompt_body,
                             instruction= instr,
