@@ -431,9 +431,9 @@ class Model_Controler:
                             temperature= self.Temp,
                             #max_tokens= self.maxOutputTokens,
                             top_p= self.Top_p)
-                    responce = self. result.choices[0].text
-                    ntokens_in = self. result.usage.prompt_tokens
-                    ntokens_out = self. result.usage.completion_tokens
+                    responce = result.choices[0].text
+                    ntokens_in = result.usage.prompt_tokens
+                    ntokens_out = result.usage.completion_tokens
         else:
             print("Error: invalid model_type")
             sys.exit()
