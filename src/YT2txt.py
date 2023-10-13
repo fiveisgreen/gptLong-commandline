@@ -1,3 +1,5 @@
+!pip install pytube
+
 from pytube import YouTube
 import re
 import whisper_utils as wu

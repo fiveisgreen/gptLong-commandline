@@ -3,12 +3,13 @@ import tempfile
 import math
 import subprocess
 import importlib
+from enum import auto, IntEnum
 
 import openai
 #from pydub import AudioSegment #This may be imported later
 #from moviepy.editor import VideoFileClip #This may be imported later
 
-from gpt_utils import Verb, clamp
+from gpt_utils import Verb, clamp, parse_fname
 
 """
 #most basics
@@ -133,6 +134,8 @@ def Whisper_Call(binary_file_handle, Prompt, Temp=0, Responce_Format = "text", L
     Langages it's good at, in order, best first: #see https://github.com/openai/whisper
     Spanish (es), Italian (it), English (en), Portugese (pt), German (de); Japanese (ja), Polish (pl), Russian (ru)...
     And for the author's sake, Czech is "cs"
+
+    Based on whisperCPP, we can guess at the other possible reponce formats: csv, vtt, srt, lrc 
     """
 
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -146,6 +149,7 @@ def Whisper_Call(binary_file_handle, Prompt, Temp=0, Responce_Format = "text", L
                 language=Language, #The language of the input audio. 
                 #word_timestamps=True
                 )
+    #The website sucks, go directly to the code: https://github.com/openai/whisper/blob/0a60fcaa9b86748389a656aa013c416030287d47/whisper/transcribe.py#L36
     return transcript 
 
 def get_file_size_in_mb(file_path):
@@ -333,3 +337,143 @@ with open(output_file,'w') as fp:
 #    fout.write(transcript )
 
 
+class whisper_models(IntEnum):
+    base = auto()
+    medium = auto()
+    large = auto()
+
+class output_fmt(IntEnum):
+    txt = auto()
+    vtt = auto()
+    srt = auto()
+    lrc = auto()
+    wts = auto()
+    csv = auto()
+    json = auto()
+  
+#Call to local whisperCPP:
+def whisper_local_call(audio_file_path:str, transcript_file_path:str, prompt:str = "", diarizaiton: bool = False, model:whisper_model=whisper_model.base, output_type:output_fmt = output_fmt.txt) -> None:
+
+    model_str = {whisper_models.base:"models/ggml-base.en.bin",
+            whisper_models.medium:"models/ggml-large.bin",
+            whisper_models.large:"models/ggml-medium.bin"}[model]
+
+    output_cmdstr = { output_fmt.txt:"-otxt", output_fmt.vtt:"-ovtt", output_fmt.srt:"-osrt", output_fmt.lrc:"-olrc", output_fmt.wts:"-owts", output_fmt.csv:"-ocsv", output_fmt.json:"-oj"}[output_type]
+
+    output_ext = { output_fmt.txt:".txt", output_fmt.vtt:".vtt", output_fmt.srt:".srt", output_fmt.lrc:".lrc", output_fmt.wts:".wts", output_fmt.csv:".csv", output_fmt.json:".json"}[output_type]
+    wave_file_path = parse_fname(audio_file_path)[0] + ".wav"
+
+    #convert to wav
+    ffmpg_cmd:str = ""
+    if diarizaiton:
+        ffmpg_cmd= f"ffmpeg -loglevel -0 -y -i {audio_file_path} -ar 16000 -ac 2 -c:a pcm_s16le {wave_file_path}"
+    else:
+        ffmpg_cmd = f"ffmpeg -loglevel -0 -y -i {audio_file_path} -ar 16000 -ac 1 -c:a pcm_s16le {wave_file_path}"
+    print(f"ffmpg cmd: {ffmpg_cmd}")
+    os.system(ffmpg_cmd)
+
+    #run whispercpp
+    whisper_cmd:str = f"{whisperCPP_dir}/main -f {wave_file_path} -m {model_str } {output_cmdstr}"
+    if diarizaiton:
+        whisper_cmd += ' -di'
+    if not prompt == '':
+        whisper_cmd += f'--prompt "{prompt}"'
+    print(f"whisper cmd: {whisper_cmd}")
+    os.system(whisper_cmd)
+   
+    #move the output file
+    whisper_output_filepath = wave_file_path + output_ext 
+    mv_cmd = f"mv {whisper_output_filepath} {transcript_file_path}"
+    print(f"move cmd: {mv_cmd}")
+    os.system(mv_cmd )
+   
+    #clean up by removing the wave file
+    rm_cmd = f"\\rm {wave_file_path}"
+    print(f"rm wave file: {rm_cmd}")
+    os.system(rm_cmd)
+
+"""
+options that seem useful:
+  -t N,      --threads N         [4      ] number of threads to use during computation
+  -p N,      --processors N      [1      ] number of processors to use during computation #Andrei7 has 10
+  -d  N,     --duration N        [0      ] duration of audio to process in milliseconds -- useful limiter
+  -tr,       --translate         [false  ] translate from source language to english
+  -di,       --diarize           [false  ] stereo audio diarization
+  -otxt,     --output-txt        [false  ] output result in a text file
+  -ovtt,     --output-vtt        [false  ] output result in a vtt file
+  -olrc,     --output-lrc        [false  ] output result in a lrc file
+  -ocsv,     --output-csv        [false  ] output result in a CSV file
+  -oj,       --output-json       [false  ] output result in a JSON file
+  -nt,       --no-timestamps     [true   ] do not print timestamps
+  -l LANG,   --language LANG     [en     ] spoken language ('auto' for auto-detect)
+  -dl,       --detect-language   [false  ] exit after automatically detecting language
+             --prompt PROMPT     [       ] initial prompt
+  -m FNAME,  --model FNAME       [models/ggml-base.en.bin] model path
+  -f FNAME,  --file FNAME        [       ] input WAV file path
+all options:
+  -t N,      --threads N         [4      ] number of threads to use during computation
+  -p N,      --processors N      [1      ] number of processors to use during computation #Andrei7 has 10
+  -ot N,     --offset-t N        [0      ] time offset in milliseconds
+  -on N,     --offset-n N        [0      ] segment index offset
+  -d  N,     --duration N        [0      ] duration of audio to process in milliseconds -- useful limiter
+  -mc N,     --max-context N     [-1     ] maximum number of text context tokens to store
+  -ml N,     --max-len N         [0      ] maximum segment length in characters
+  -sow,      --split-on-word     [false  ] split on word rather than on token
+  -bo N,     --best-of N         [2      ] number of best candidates to keep
+  -bs N,     --beam-size N       [-1     ] beam size for beam search
+  -wt N,     --word-thold N      [0.01   ] word timestamp probability threshold
+  -et N,     --entropy-thold N   [2.40   ] entropy threshold for decoder fail
+  -lpt N,    --logprob-thold N   [-1.00  ] log probability threshold for decoder fail
+  -su,       --speed-up          [false  ] speed up audio by x2 (reduced accuracy)
+  -tr,       --translate         [false  ] translate from source language to english
+  -di,       --diarize           [false  ] stereo audio diarization
+  -nf,       --no-fallback       [false  ] do not use temperature fallback while decoding
+  -otxt,     --output-txt        [false  ] output result in a text file
+  -ovtt,     --output-vtt        [false  ] output result in a vtt file
+  -osrt,     --output-srt        [false  ] output result in a srt file
+  -olrc,     --output-lrc        [false  ] output result in a lrc file
+  -owts,     --output-words      [false  ] output script for generating karaoke video
+  -fp,       --font-path         [/System/Library/Fonts/Supplemental/Courier New Bold.ttf] path to a monospace font for karaoke video
+  -ocsv,     --output-csv        [false  ] output result in a CSV file
+  -oj,       --output-json       [false  ] output result in a JSON file
+  -of FNAME, --output-file FNAME [       ] output file path (without file extension)
+  -ps,       --print-special     [false  ] print special tokens
+  -pc,       --print-colors      [false  ] print colors
+  -pp,       --print-progress    [false  ] print progress
+  -nt,       --no-timestamps     [true   ] do not print timestamps
+  -l LANG,   --language LANG     [en     ] spoken language ('auto' for auto-detect)
+  -dl,       --detect-language   [false  ] exit after automatically detecting language
+             --prompt PROMPT     [       ] initial prompt
+  -m FNAME,  --model FNAME       [models/ggml-base.en.bin] model path
+  -f FNAME,  --file FNAME        [       ] input WAV file path
+Models:
+models/for-tests-ggml-base.bin
+models/for-tests-ggml-base.en.bin
+models/for-tests-ggml-large.bin
+models/for-tests-ggml-medium.bin
+models/for-tests-ggml-medium.en.bin
+models/for-tests-ggml-small.bin
+models/for-tests-ggml-small.en.bin
+models/for-tests-ggml-tiny.bin
+models/for-tests-ggml-tiny.en.bin
+models/ggml-base.bin
+models/ggml-base.en.bin
+models/ggml-large.bin
+models/ggml-medium.bin
+CSV:
+start,end,text
+0,1280," It's good to see you."
+LRC:
+[by:whisper.cpp]
+[00:00.00] It's good to see you.
+VTT:
+WEBVTT
+
+00:00:00.000 --> 00:00:01.280
+ It's good to see you.
+LRT:
+1
+00:00:00,000 --> 00:00:01,280
+ It's good to see you.
+  """
+#no need to chunk with whispercpp! It can take long audio. But it returns nothing before hand.
